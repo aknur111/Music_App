@@ -1,10 +1,12 @@
-go 1.22
+go 1.22.7
+
+toolchain go1.23.0
 
 use (
 	./api-gateway
 	./auth-service
 	./music-service
-	./playlist-service
 	./notification-service
+	./playlist-service
 	./tests/integration
 )

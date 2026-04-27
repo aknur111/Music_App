@@ -12,6 +12,8 @@ type UserRepository interface {
 	Create(ctx context.Context, user *entity.User) error
 	FindByID(ctx context.Context, id string) (*entity.User, error)
 	FindByEmail(ctx context.Context, email string) (*entity.User, error)
+	FindByEmailVerifyToken(ctx context.Context, token string) (*entity.User, error)
+	FindByPasswordResetToken(ctx context.Context, token string) (*entity.User, error)
 	Update(ctx context.Context, user *entity.User) error
 	SoftDelete(ctx context.Context, id string) error
 }
