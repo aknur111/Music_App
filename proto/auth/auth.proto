@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "github.com/music-app/auth-service/gen/auth;auth";
+
+// ── Messages ─────────────────────────────────────────────────────────────────
+
+message RegisterRequest {
+  string name     = 1;
+  string email    = 2;
+  string password = 3;
+}
+
+message RegisterResponse {
+  string user_id = 1;
+  string email   = 2;
+}
+
+message LoginRequest {
+  string email    = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string access_token  = 1;
+  string refresh_token = 2;
+  int64  expires_at    = 3;
+}
+
+message LogoutRequest {
+  string access_token = 1;
+}
+
+message LogoutResponse {
+  bool success = 1;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token  = 1;
+  string refresh_token = 2;
+  int64  expires_at    = 3;
+}
+
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  bool   valid   = 1;
+  string user_id = 2;
+  string email   = 3;
+}
+
+message PasswordResetRequest {
+  string email = 1;
+}
+
+message PasswordResetResponse {
+  bool success = 1;
+}
+
+// ── Service ──────────────────────────────────────────────────────────────────
+
+service AuthService {
+  // endpoint 1
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  // endpoint 2
+  rpc Login(LoginRequest) returns (LoginResponse);
+  // endpoint 3
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  // endpoint 4
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  // endpoint 5
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  // endpoint 6
+  rpc RequestPasswordReset(PasswordResetRequest) returns (PasswordResetResponse);
+}

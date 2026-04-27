@@ -1,0 +1,29 @@
+package entity
+
+import "time"
+
+type Artist struct {
+	ID        string
+	Name      string
+	Bio       string
+	CreatedAt time.Time
+}
+
+type Album struct {
+	ID        string
+	Title     string
+	ArtistID  string
+	Year      int
+	CreatedAt time.Time
+}
+
+type Song struct {
+	ID         string
+	Title      string
+	ArtistID   string
+	AlbumID    string
+	DurationS  int
+	Genre      string
+	SearchVec  string
+	CreatedAt  time.Time
+}

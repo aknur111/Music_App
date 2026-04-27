@@ -1,0 +1,61 @@
+{
+  "title": "Music App Services",
+  "uid": "music-app-services",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "gRPC Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "sum(rate(grpc_server_handled_total[1m])) by (grpc_service)",
+          "legendFormat": "{{grpc_service}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "gRPC Error Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "sum(rate(grpc_server_handled_total{grpc_code!=\"OK\"}[1m])) by (grpc_service, grpc_code)",
+          "legendFormat": "{{grpc_service}} {{grpc_code}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "gRPC Latency P99",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket[5m])) by (le, grpc_service))",
+          "legendFormat": "{{grpc_service}} p99"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "HTTP Gateway Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "sum(rate(http_requests_total[1m])) by (handler, method)",
+          "legendFormat": "{{method}} {{handler}}"
+        }
+      ]
+    }
+  ]
+}

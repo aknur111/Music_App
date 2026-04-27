@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package music;
+
+option go_package = "github.com/music-app/music-service/gen/music;music";
+
+// ── Common models ─────────────────────────────────────────────────────────────
+
+message Song {
+  string   id         = 1;
+  string   title      = 2;
+  string   artist_id  = 3;
+  string   artist     = 4;
+  string   album_id   = 5;
+  string   album      = 6;
+  int32    duration_s = 7;
+  string   genre      = 8;
+  int64    created_at = 9;
+}
+
+message Album {
+  string         id         = 1;
+  string         title      = 2;
+  string         artist_id  = 3;
+  string         artist     = 4;
+  int32          year       = 5;
+  repeated Song  songs      = 6;
+}
+
+message Pagination {
+  int32 page  = 1;
+  int32 limit = 2;
+}
+
+// ── Requests / Responses ──────────────────────────────────────────────────────
+
+message GetSongRequest {
+  string song_id = 1;
+}
+
+message ListSongsRequest {
+  Pagination pagination = 1;
+  string     artist_id  = 2;
+  string     album_id   = 3;
+}
+
+message ListSongsResponse {
+  repeated Song songs = 1;
+  int32         total = 2;
+}
+
+message SearchSongsRequest {
+  string query      = 1;
+  Pagination pagination = 2;
+}
+
+message SearchSongsResponse {
+  repeated Song songs = 1;
+  int32         total = 2;
+}
+
+message GetAlbumRequest {
+  string album_id = 1;
+}
+
+message ListAlbumsRequest {
+  Pagination pagination = 1;
+  string     artist_id  = 2;
+}
+
+message ListAlbumsResponse {
+  repeated Album albums = 1;
+  int32          total  = 2;
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+
+service MusicService {
+  // endpoint 7
+  rpc GetSong(GetSongRequest) returns (Song);
+  // endpoint 8
+  rpc ListSongs(ListSongsRequest) returns (ListSongsResponse);
+  // endpoint 9
+  rpc SearchSongs(SearchSongsRequest) returns (SearchSongsResponse);
+  // endpoint 10
+  rpc GetAlbum(GetAlbumRequest) returns (Album);
+  // endpoint 11
+  rpc ListAlbums(ListAlbumsRequest) returns (ListAlbumsResponse);
+}

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package notification;
+
+option go_package = "github.com/music-app/notification-service/gen/notification;notification";
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+
+message SendEmailRequest {
+  string to      = 1;
+  string subject = 2;
+  string body    = 3;
+  bool   is_html = 4;
+}
+
+message SendEmailResponse {
+  bool   success  = 1;
+  string message  = 2;
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+
+service NotificationService {
+  // endpoint 17
+  rpc SendDirectEmail(SendEmailRequest) returns (SendEmailResponse);
+}

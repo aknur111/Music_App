@@ -1,0 +1,213 @@
+version: "3.9"
+
+services:
+  # ── Databases ──────────────────────────────────────────────────────────────
+  postgres-auth:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-music:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: music_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_music_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-playlist:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: playlist_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_playlist_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-notification:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notification_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_notification_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── NATS JetStream ─────────────────────────────────────────────────────────
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Observability ──────────────────────────────────────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:1.56
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  loki:
+    image: grafana/loki:2.9.5
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+
+  # ── Application Services ───────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "50051:50051"
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  music-service:
+    build:
+      context: ./music-service
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "50052:50052"
+    depends_on:
+      postgres-music:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  playlist-service:
+    build:
+      context: ./playlist-service
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "50053:50053"
+    depends_on:
+      postgres-playlist:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "50054:50054"
+    depends_on:
+      postgres-notification:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - music-service
+      - playlist-service
+
+volumes:
+  postgres_auth_data:
+  postgres_music_data:
+  postgres_playlist_data:
+  postgres_notification_data:
+  redis_data:
+  grafana_data:

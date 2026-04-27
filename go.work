@@ -1,0 +1,10 @@
+go 1.22
+
+use (
+	./api-gateway
+	./auth-service
+	./music-service
+	./playlist-service
+	./notification-service
+	./tests/integration
+)

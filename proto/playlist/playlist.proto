@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package playlist;
+
+option go_package = "github.com/music-app/playlist-service/gen/playlist;playlist";
+
+// ── Common models ─────────────────────────────────────────────────────────────
+
+message PlaylistSong {
+  string song_id   = 1;
+  string title     = 2;
+  string artist    = 3;
+  int32  position  = 4;
+  int32  duration_s = 5;
+}
+
+message Playlist {
+  string               id          = 1;
+  string               user_id     = 2;
+  string               name        = 3;
+  string               description = 4;
+  repeated PlaylistSong songs      = 5;
+  int32                song_count  = 6;
+  int64                created_at  = 7;
+  int64                updated_at  = 8;
+}
+
+// ── Requests / Responses ──────────────────────────────────────────────────────
+
+message CreatePlaylistRequest {
+  string user_id     = 1;
+  string name        = 2;
+  string description = 3;
+}
+
+message GetPlaylistRequest {
+  string playlist_id = 1;
+  string user_id     = 2;
+}
+
+message ListUserPlaylistsRequest {
+  string user_id = 1;
+  int32  page    = 2;
+  int32  limit   = 3;
+}
+
+message ListUserPlaylistsResponse {
+  repeated Playlist playlists = 1;
+  int32             total     = 2;
+}
+
+message AddSongRequest {
+  string playlist_id = 1;
+  string song_id     = 2;
+  string user_id     = 3;
+}
+
+message AddSongResponse {
+  bool  success  = 1;
+  int32 position = 2;
+}
+
+message RemoveSongRequest {
+  string playlist_id = 1;
+  string song_id     = 2;
+  string user_id     = 3;
+}
+
+message RemoveSongResponse {
+  bool success = 1;
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+
+service PlaylistService {
+  // endpoint 12
+  rpc CreatePlaylist(CreatePlaylistRequest) returns (Playlist);
+  // endpoint 13
+  rpc GetPlaylist(GetPlaylistRequest) returns (Playlist);
+  // endpoint 14
+  rpc ListUserPlaylists(ListUserPlaylistsRequest) returns (ListUserPlaylistsResponse);
+  // endpoint 15
+  rpc AddSongToPlaylist(AddSongRequest) returns (AddSongResponse);
+  // endpoint 16
+  rpc RemoveSongFromPlaylist(RemoveSongRequest) returns (RemoveSongResponse);
+}
