@@ -3,13 +3,18 @@ package entity
 import "time"
 
 type User struct {
-	ID           string
-	Name         string
-	Email        string
-	PasswordHash string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	DeletedAt    *time.Time
+	ID                  string
+	Name                string
+	Email               string
+	PasswordHash        string
+	EmailVerified       bool
+	EmailVerifyToken    string
+	EmailVerifyExpiry   *time.Time
+	PasswordResetToken  string
+	PasswordResetExpiry *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	DeletedAt           *time.Time
 }
 
 type RefreshToken struct {

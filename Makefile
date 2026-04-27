@@ -1,21 +1,39 @@
-.PHONY: proto up down test test-unit test-integration migrate lint tidy
+.PHONY: proto up down test test-unit test-integration migrate lint tidy fmt vet build mocks help
 
 SERVICES := auth-service music-service playlist-service notification-service api-gateway
 PROTO_DIR := proto
-PROTO_OUT := .
 
 # ── Protobuf ────────────────────────────────────────────────────────────────
 proto:
 	@echo "Generating protobuf stubs..."
-	@for svc in auth music playlist notification; do \
-		protoc \
-			--go_out=$(PROTO_OUT) \
-			--go_opt=paths=source_relative \
-			--go-grpc_out=$(PROTO_OUT) \
-			--go-grpc_opt=paths=source_relative \
-			-I $(PROTO_DIR) \
-			$(PROTO_DIR)/$$svc/$$svc.proto; \
-	done
+	protoc \
+		--go_out=auth-service/gen \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=auth-service/gen \
+		--go-grpc_opt=paths=source_relative \
+		-I $(PROTO_DIR) \
+		$(PROTO_DIR)/auth/auth.proto
+	protoc \
+		--go_out=music-service/gen \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=music-service/gen \
+		--go-grpc_opt=paths=source_relative \
+		-I $(PROTO_DIR) \
+		$(PROTO_DIR)/music/music.proto
+	protoc \
+		--go_out=playlist-service/gen \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=playlist-service/gen \
+		--go-grpc_opt=paths=source_relative \
+		-I $(PROTO_DIR) \
+		$(PROTO_DIR)/playlist/playlist.proto
+	protoc \
+		--go_out=notification-service/gen \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=notification-service/gen \
+		--go-grpc_opt=paths=source_relative \
+		-I $(PROTO_DIR) \
+		$(PROTO_DIR)/notification/notification.proto
 	@echo "Done."
 
 # ── Docker ──────────────────────────────────────────────────────────────────
@@ -29,67 +47,77 @@ infra-up:
 	docker compose up -d postgres-auth postgres-music postgres-playlist postgres-notification redis nats jaeger prometheus loki grafana
 
 infra-down:
-	docker compose down postgres-auth postgres-music postgres-playlist postgres-notification redis nats jaeger prometheus loki grafana
+	docker compose stop postgres-auth postgres-music postgres-playlist postgres-notification redis nats jaeger prometheus loki grafana
 
 # ── Migrations ──────────────────────────────────────────────────────────────
 migrate-up:
 	@for svc in auth-service music-service playlist-service notification-service; do \
 		echo "Running migrations for $$svc..."; \
-		$(MAKE) -C $$svc migrate-up; \
+		(cd $$svc && go run ./cmd/... -migrate-only) || true; \
 	done
 
 migrate-down:
-	@for svc in auth-service music-service playlist-service notification-service; do \
-		echo "Rolling back migrations for $$svc..."; \
-		$(MAKE) -C $$svc migrate-down; \
-	done
+	@echo "Run per-service: cd <service> && migrate -path migrations -database <DSN> down"
 
 # ── Testing ─────────────────────────────────────────────────────────────────
 test:
-	go test ./... -v -count=1
+	@for svc in $(SERVICES); do \
+		echo "Testing $$svc..."; \
+		(cd $$svc && go test ./... -v -count=1) || exit 1; \
+	done
 
 test-unit:
-	go test ./... -v -count=1 -short
+	@for svc in $(SERVICES); do \
+		echo "Testing (unit) $$svc..."; \
+		(cd $$svc && go test ./... -v -count=1 -short) || exit 1; \
+	done
 
 test-integration:
-	go test ./tests/integration/... -v -count=1 -tags=integration
+	(cd tests/integration && go test ./... -v -count=1 -tags=integration)
 
 test-cover:
-	go test ./... -coverprofile=coverage.out
-	go tool cover -html=coverage.out -o coverage.html
+	@for svc in $(SERVICES); do \
+		(cd $$svc && go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out -o coverage.html) || true; \
+	done
 
 # ── Code Quality ─────────────────────────────────────────────────────────────
 lint:
-	golangci-lint run ./...
+	@for svc in $(SERVICES); do \
+		echo "Linting $$svc..."; \
+		(cd $$svc && golangci-lint run ./...) || exit 1; \
+	done
 
 tidy:
 	@for svc in $(SERVICES); do \
 		echo "Tidying $$svc..."; \
-		cd $$svc && go mod tidy && cd ..; \
+		(cd $$svc && go mod tidy) || exit 1; \
 	done
+	(cd tests/integration && go mod tidy) || true
 	go work sync
 
 fmt:
-	gofmt -w ./...
+	@for svc in $(SERVICES); do \
+		(cd $$svc && gofmt -w .); \
+	done
 
 vet:
 	@for svc in $(SERVICES); do \
 		echo "Vetting $$svc..."; \
-		cd $$svc && go vet ./... && cd ..; \
+		(cd $$svc && go vet ./...) || exit 1; \
 	done
 
 # ── Build ────────────────────────────────────────────────────────────────────
 build:
 	@for svc in $(SERVICES); do \
 		echo "Building $$svc..."; \
-		cd $$svc && go build -o bin/$$svc ./cmd/... && cd ..; \
+		(cd $$svc && mkdir -p bin && go build -o bin/$$svc ./cmd/...) || exit 1; \
 	done
 
 # ── Mock generation ──────────────────────────────────────────────────────────
 mocks:
 	@echo "Generating mocks..."
 	@for svc in auth-service music-service playlist-service notification-service; do \
-		cd $$svc && go generate ./... && cd ..; \
+		(cd $$svc && go generate ./...); \
 	done
 
 help:
@@ -99,12 +127,9 @@ help:
 	@echo "  up                 Start all services with docker compose"
 	@echo "  down               Stop and remove all containers + volumes"
 	@echo "  infra-up           Start only infrastructure (postgres, redis, nats, observability)"
-	@echo "  migrate-up         Run all service migrations"
-	@echo "  migrate-down       Roll back all service migrations"
-	@echo "  test               Run all tests"
-	@echo "  test-unit          Run unit tests only"
-	@echo "  test-integration   Run integration tests"
-	@echo "  test-cover         Generate coverage report"
+	@echo "  test               Run all unit tests"
+	@echo "  test-integration   Run integration tests (needs docker)"
+	@echo "  test-cover         Generate coverage report per service"
 	@echo "  lint               Run golangci-lint"
 	@echo "  tidy               Run go mod tidy for all services"
 	@echo "  build              Build all service binaries"

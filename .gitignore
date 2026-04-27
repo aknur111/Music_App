@@ -25,3 +25,6 @@ Thumbs.db
 
 # Docker volumes (if mounted locally)
 data/
+
+# Local Claude Code files
+.claude/
