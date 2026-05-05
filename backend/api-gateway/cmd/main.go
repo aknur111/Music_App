@@ -14,6 +14,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
+	authpb "github.com/music-app/auth-service/gen/auth"
+
 	"github.com/music-app/api-gateway/internal/client"
 	"github.com/music-app/api-gateway/internal/config"
 	"github.com/music-app/api-gateway/internal/handler"
@@ -45,21 +47,67 @@ func main() {
 	}
 	defer playlistConn.Close()
 
-	// ── Build client adapter (wires proto stubs to handler.Clients) ───────────
-	// TODO: import generated pb stubs and wire concrete implementations.
-	// Connections are established here; stub wiring happens once proto is generated.
-	_ = authConn
+	// music/playlist stubs not yet implemented
 	_ = musicConn
 	_ = playlistConn
 
+	// ── Auth gRPC client ──────────────────────────────────────────────────────
+	authClient := authpb.NewAuthServiceClient(authConn)
+
+	// ── Wire handler.Clients ──────────────────────────────────────────────────
 	clients := &handler.Clients{
+		RegisterUser: func(ctx context.Context, name, email, password string) (string, error) {
+			resp, err := authClient.Register(ctx, &authpb.RegisterRequest{
+				Name:     name,
+				Email:    email,
+				Password: password,
+			})
+			if err != nil {
+				return "", err
+			}
+			return resp.UserId, nil
+		},
+
+		LoginUser: func(ctx context.Context, email, password string) (string, string, int64, error) {
+			resp, err := authClient.Login(ctx, &authpb.LoginRequest{
+				Email:    email,
+				Password: password,
+			})
+			if err != nil {
+				return "", "", 0, err
+			}
+			return resp.AccessToken, resp.RefreshToken, resp.ExpiresAt, nil
+		},
+
+		LogoutUser: func(ctx context.Context, token string) error {
+			_, err := authClient.Logout(ctx, &authpb.LogoutRequest{AccessToken: token})
+			return err
+		},
+
+		RefreshToken: func(ctx context.Context, refreshToken string) (string, string, int64, error) {
+			resp, err := authClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{
+				RefreshToken: refreshToken,
+			})
+			if err != nil {
+				return "", "", 0, err
+			}
+			return resp.AccessToken, resp.RefreshToken, resp.ExpiresAt, nil
+		},
+
 		ValidateToken: func(ctx context.Context, token string) (string, string, bool) {
-			return "", "", false // replaced after proto gen
+			resp, err := authClient.ValidateToken(ctx, &authpb.ValidateTokenRequest{
+				AccessToken: token,
+			})
+			if err != nil || !resp.Valid {
+				return "", "", false
+			}
+			return resp.UserId, resp.Email, resp.Valid
 		},
 	}
 
 	// ── HTTP router ───────────────────────────────────────────────────────────
 	r := chi.NewRouter()
+	r.Use(middleware.CORS)
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.Logger(logger))
