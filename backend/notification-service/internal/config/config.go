@@ -12,6 +12,7 @@ type Config struct {
 	NatsURL        string
 	OTLPEndpoint   string
 	MigrationsPath string
+	TemplatesPath  string
 	SMTPHost       string
 	SMTPPort       int
 	SMTPUser       string
@@ -33,6 +34,7 @@ func Load() *Config {
 		NatsURL:        getEnv("NATS_URL", "nats://localhost:4222"),
 		OTLPEndpoint:   getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
 		MigrationsPath: getEnv("MIGRATIONS_PATH", "migrations"),
+		TemplatesPath:  getEnv("TEMPLATES_PATH", "templates"),
 		SMTPHost:       getEnv("SMTP_HOST", "smtp.gmail.com"),
 		SMTPPort:       smtpPort,
 		SMTPUser:       getEnv("SMTP_USER", ""),
