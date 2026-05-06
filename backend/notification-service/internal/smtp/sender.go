@@ -20,21 +20,24 @@ type Sender struct {
 }
 
 func NewSender(cfg Config) *Sender {
-	d := gomail.NewDialer(cfg.Host, cfg.Port, cfg.User, cfg.Password)
-	return &Sender{cfg: cfg, dialer: d}
+	return &Sender{
+		cfg:    cfg,
+		dialer: gomail.NewDialer(cfg.Host, cfg.Port, cfg.User, cfg.Password),
+	}
 }
 
+// Send delivers an email. Set isHTML=true for HTML body, false for plain text.
 func (s *Sender) Send(to, subject, body string, isHTML bool) error {
 	m := gomail.NewMessage()
 	m.SetHeader("From", s.cfg.From)
 	m.SetHeader("To", to)
 	m.SetHeader("Subject", subject)
 
-	contentType := "text/plain"
+	ct := "text/plain"
 	if isHTML {
-		contentType = "text/html"
+		ct = "text/html"
 	}
-	m.SetBody(contentType, body)
+	m.SetBody(ct, body)
 
 	if err := s.dialer.DialAndSend(m); err != nil {
 		return fmt.Errorf("smtp send to %s: %w", to, err)
