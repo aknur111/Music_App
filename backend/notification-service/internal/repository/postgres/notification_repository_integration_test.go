@@ -48,7 +48,7 @@ func TestNotificationRepository_Integration(t *testing.T) {
 	ctx := context.Background()
 
 	// Run migrations so the table exists.
-	require.NoError(t, infraPG.RunMigrations(dsn, "../../../../migrations"))
+	require.NoError(t, infraPG.RunMigrations(dsn, "../../../migrations"))
 
 	pool, err := infraPG.NewPool(ctx, dsn)
 	require.NoError(t, err)
