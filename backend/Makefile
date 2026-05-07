@@ -2,10 +2,14 @@
 
 SERVICES := auth-service music-service playlist-service notification-service api-gateway
 PROTO_DIR := proto
+# protoc-gen-go and protoc-gen-go-grpc live in $(go env GOPATH)/bin
+GOPATH_BIN := $(shell go env GOPATH)/bin
+export PATH := $(GOPATH_BIN):$(PATH)
 
 # ── Protobuf ────────────────────────────────────────────────────────────────
 proto:
 	@echo "Generating protobuf stubs..."
+	@mkdir -p auth-service/gen/auth music-service/gen/music playlist-service/gen/playlist notification-service/gen/notification
 	protoc \
 		--go_out=auth-service/gen \
 		--go_opt=paths=source_relative \
@@ -74,6 +78,8 @@ test-unit:
 
 test-integration:
 	(cd tests/integration && go test ./... -v -count=1 -tags=integration)
+	@echo "Running per-service integration tests..."
+	(cd notification-service && go test -tags=integration -v -count=1 ./...)
 
 test-cover:
 	@for svc in $(SERVICES); do \
