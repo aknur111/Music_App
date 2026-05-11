@@ -1,10 +1,26 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Play } from 'lucide-react'
-import { DEMO_ALBUMS } from '@/lib/constants'
+import { MusicService } from '@/services'
+import type { Album } from '@/types'
 
 export default function AlbumsPage() {
   const navigate = useNavigate()
+  const [albums, setAlbums] = useState<Album[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    MusicService.getAlbums().then(setAlbums).finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center py-24">
+        <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -15,7 +31,7 @@ export default function AlbumsPage() {
     >
       <h1 className="text-2xl font-bold text-[#f8fafc] mb-6">Albums</h1>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-        {DEMO_ALBUMS.map((album) => (
+        {albums.map((album) => (
           <div
             key={album.id}
             className="group cursor-pointer"
