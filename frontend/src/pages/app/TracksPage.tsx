@@ -1,17 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Play, Heart, Search } from 'lucide-react'
-import { DEMO_TRACKS } from '@/lib/constants'
+import { MusicService } from '@/services'
 import { formatDuration, formatCount, cn } from '@/lib/utils'
+import { usePlayerStore } from '@/store/playerStore'
 import type { Track } from '@/types'
 
 export default function TracksPage() {
+  const { playTrack } = usePlayerStore()
+  const [tracks, setTracks] = useState<Track[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [likedIds, setLikedIds] = useState<Set<string>>(
-    () => new Set(DEMO_TRACKS.filter((t) => t.isLiked).map((t) => t.id)),
-  )
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
 
-  const filtered = DEMO_TRACKS.filter(
+  useEffect(() => {
+    MusicService.getTracks(1, 50).then(setTracks).finally(() => setLoading(false))
+  }, [])
+
+  const filtered = tracks.filter(
     (t) =>
       t.title.toLowerCase().includes(search.toLowerCase()) ||
       t.artist.toLowerCase().includes(search.toLowerCase()),
@@ -23,6 +29,14 @@ export default function TracksPage() {
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center py-24">
+        <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -49,7 +63,6 @@ export default function TracksPage() {
         </div>
       </div>
 
-      {/* Header row */}
       <div className="grid grid-cols-[2rem_1fr_1fr_5rem_5rem_3rem] gap-4 px-4 text-xs text-[#64748b] font-medium uppercase tracking-wide border-b border-white/8 pb-2">
         <span>#</span>
         <span>Title</span>
@@ -63,12 +76,16 @@ export default function TracksPage() {
         {filtered.map((track: Track, i) => (
           <div
             key={track.id}
+            onClick={() => playTrack(track, filtered)}
             className="grid grid-cols-[2rem_1fr_1fr_5rem_5rem_3rem] gap-4 px-4 py-2.5 rounded-xl hover:bg-white/4 transition-colors group cursor-pointer items-center"
           >
             <span className="text-sm text-[#64748b] font-mono text-right group-hover:hidden">
               {i + 1}
             </span>
-            <button className="hidden group-hover:flex items-center justify-end">
+            <button
+              className="hidden group-hover:flex items-center justify-end"
+              onClick={(e) => { e.stopPropagation(); playTrack(track, filtered) }}
+            >
               <Play className="w-4 h-4 fill-violet-400 text-violet-400" />
             </button>
             <div className="flex items-center gap-3 min-w-0">
@@ -84,10 +101,7 @@ export default function TracksPage() {
               {formatDuration(track.duration)}
             </p>
             <button
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleLike(track.id)
-              }}
+              onClick={(e) => { e.stopPropagation(); toggleLike(track.id) }}
               className="flex items-center justify-center"
             >
               <Heart
@@ -103,7 +117,7 @@ export default function TracksPage() {
         ))}
       </div>
 
-      {filtered.length === 0 && (
+      {filtered.length === 0 && !loading && (
         <p className="text-center text-[#64748b] py-12">No tracks match your search.</p>
       )}
     </motion.div>
