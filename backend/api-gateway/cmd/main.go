@@ -28,7 +28,6 @@ func main() {
 
 	cfg := config.Load()
 
-	// ── gRPC connections ──────────────────────────────────────────────────────
 	authConn, err := client.NewGRPCConn(cfg.AuthServiceAddr)
 	if err != nil {
 		logger.Fatal("auth-service connect", zap.Error(err))
@@ -47,14 +46,11 @@ func main() {
 	}
 	defer playlistConn.Close()
 
-	// music/playlist stubs not yet implemented
 	_ = musicConn
 	_ = playlistConn
 
-	// ── Auth gRPC client ──────────────────────────────────────────────────────
 	authClient := authpb.NewAuthServiceClient(authConn)
 
-	// ── Wire handler.Clients ──────────────────────────────────────────────────
 	clients := &handler.Clients{
 		RegisterUser: func(ctx context.Context, name, email, password string) (string, error) {
 			resp, err := authClient.Register(ctx, &authpb.RegisterRequest{
@@ -105,12 +101,12 @@ func main() {
 		},
 	}
 
-	// ── HTTP router ───────────────────────────────────────────────────────────
 	r := chi.NewRouter()
 	r.Use(middleware.CORS)
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.Logger(logger))
+	r.Use(middleware.Metrics)
 
 	r.Mount("/", handler.Router(clients))
 

@@ -2,16 +2,18 @@ package handler
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// Clients holds gRPC client stubs injected at startup.
 type Clients struct {
 	ValidateToken func(ctx context.Context, token string) (userID, email string, valid bool)
 	RegisterUser  func(ctx context.Context, name, email, password string) (userID string, err error)
@@ -37,10 +39,12 @@ func Router(clients *Clients) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	// auth (public)
+	r.Handle("/metrics", promhttp.Handler())
+
 	r.Post("/api/v1/auth/register", registerHandler(clients))
 	r.Post("/api/v1/auth/login", loginHandler(clients))
 	r.Post("/api/v1/auth/refresh", refreshHandler(clients))
+	r.Get("/api/v1/auth/profile", profileHandler(clients))
 
 	return r
 }
@@ -132,7 +136,58 @@ func refreshHandler(c *Clients) http.HandlerFunc {
 	}
 }
 
-// writeGRPCError maps a gRPC status error to an HTTP JSON response.
+func profileHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if len(authHeader) < 8 || !strings.EqualFold(authHeader[:7], "bearer ") {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "missing or invalid token"})
+			return
+		}
+		token := authHeader[7:]
+
+		userID, email, valid := c.ValidateToken(r.Context(), token)
+		if !valid {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid or expired token"})
+			return
+		}
+
+		claims := parseJWTPayload(token)
+		role, _ := claims["role"].(string)
+		if role == "" {
+			role = "user"
+		}
+		name, _ := claims["name"].(string)
+		if name == "" {
+			name = email
+		}
+		iat, _ := claims["iat"].(float64)
+		createdAt := time.Unix(int64(iat), 0).UTC().Format(time.RFC3339)
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"id":         userID,
+			"username":   name,
+			"email":      email,
+			"role":       role,
+			"created_at": createdAt,
+			"updated_at": createdAt,
+		})
+	}
+}
+
+func parseJWTPayload(token string) map[string]interface{} {
+	parts := strings.SplitN(token, ".", 3)
+	if len(parts) != 3 {
+		return nil
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil
+	}
+	var claims map[string]interface{}
+	_ = json.Unmarshal(payload, &claims)
+	return claims
+}
+
 func writeGRPCError(w http.ResponseWriter, err error) {
 	st, _ := status.FromError(err)
 	var code int
