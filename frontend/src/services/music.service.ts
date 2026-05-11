@@ -1,95 +1,103 @@
-import { get } from '@/services/api';
-import type { Track, Album, Artist } from '@/types';
-import { DEMO_TRACKS, DEMO_ALBUMS, DEMO_ARTISTS } from '@/lib/constants';
+import { get } from '@/services/api'
+import type { Track, Album, Artist } from '@/types'
+import { DEMO_TRACKS, DEMO_ALBUMS, DEMO_ARTISTS } from '@/lib/constants'
+import { getProvider } from '@/providers'
 
-// ─── MusicService ─────────────────────────────────────────────────────────────
+async function withFallbacks<T>(
+  backendCall: () => Promise<T>,
+  providerCall: () => Promise<T>,
+  staticFallback: T,
+): Promise<T> {
+  try {
+    return await backendCall()
+  } catch {
+    try {
+      return await providerCall()
+    } catch {
+      return staticFallback
+    }
+  }
+}
 
 export const MusicService = {
-  /**
-   * Fetch a paginated list of tracks.
-   * Falls back to DEMO_TRACKS if the endpoint is unavailable.
-   */
   async getTracks(page = 1, limit = 20): Promise<Track[]> {
-    try {
-      const data = await get<Track[] | { data: Track[] }>('/api/v1/songs', { page, limit });
-      return Array.isArray(data) ? data : data.data;
-    } catch {
-      return DEMO_TRACKS;
-    }
+    return withFallbacks(
+      async () => {
+        const data = await get<Track[] | { data: Track[] }>('/api/v1/songs', { page, limit })
+        return Array.isArray(data) ? data : data.data
+      },
+      () => getProvider().getTracks({ limit, offset: (page - 1) * limit }),
+      DEMO_TRACKS,
+    )
   },
 
-  /**
-   * Fetch a single track by ID.
-   * Falls back to the matching demo track, or throws if not found.
-   */
   async getTrack(id: string): Promise<Track> {
     try {
-      return await get<Track>(`/api/v1/songs/${id}`);
+      return await get<Track>(`/api/v1/songs/${id}`)
     } catch {
-      const demo = DEMO_TRACKS.find((t) => t.id === id);
-      if (demo) return demo;
-      throw new Error(`Track with id "${id}" not found`);
+      try {
+        const track = await getProvider().getTrack(id)
+        if (track) return track
+      } catch {}
+      const demo = DEMO_TRACKS.find((t) => t.id === id)
+      if (demo) return demo
+      throw new Error(`Track "${id}" not found`)
     }
   },
 
-  /**
-   * Search tracks by a query string.
-   * Falls back to a client-side filter over DEMO_TRACKS.
-   */
   async searchTracks(query: string): Promise<Track[]> {
-    const trimmed = query.trim();
-    if (!trimmed) return [];
-
-    try {
-      const data = await get<Track[] | { data: Track[] }>('/api/v1/songs/search', { q: trimmed });
-      return Array.isArray(data) ? data : data.data;
-    } catch {
-      const q = trimmed.toLowerCase();
-      return DEMO_TRACKS.filter(
+    const q = query.trim()
+    if (!q) return []
+    return withFallbacks(
+      async () => {
+        const data = await get<Track[] | { data: Track[] }>('/api/v1/songs/search', { q })
+        return Array.isArray(data) ? data : data.data
+      },
+      () => getProvider().searchTracks(q),
+      DEMO_TRACKS.filter(
         (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.artist.toLowerCase().includes(q) ||
-          t.album.toLowerCase().includes(q),
-      );
-    }
+          t.title.toLowerCase().includes(q.toLowerCase()) ||
+          t.artist.toLowerCase().includes(q.toLowerCase()) ||
+          t.album.toLowerCase().includes(q.toLowerCase()),
+      ),
+    )
   },
 
-  /**
-   * Fetch all albums. Mocked until the backend endpoint is live.
-   */
   async getAlbums(): Promise<Album[]> {
-    try {
-      const data = await get<Album[] | { data: Album[] }>('/api/v1/albums');
-      return Array.isArray(data) ? data : data.data;
-    } catch {
-      return DEMO_ALBUMS;
-    }
+    return withFallbacks(
+      async () => {
+        const data = await get<Album[] | { data: Album[] }>('/api/v1/albums')
+        return Array.isArray(data) ? data : data.data
+      },
+      () => getProvider().getAlbums(),
+      DEMO_ALBUMS,
+    )
   },
 
-  /**
-   * Fetch a single album by ID.
-   */
   async getAlbum(id: string): Promise<Album> {
     try {
-      return await get<Album>(`/api/v1/albums/${id}`);
+      return await get<Album>(`/api/v1/albums/${id}`)
     } catch {
-      const demo = DEMO_ALBUMS.find((a) => a.id === id);
-      if (demo) return demo;
-      throw new Error(`Album with id "${id}" not found`);
+      try {
+        const album = await getProvider().getAlbum(id)
+        if (album) return album
+      } catch {}
+      const demo = DEMO_ALBUMS.find((a) => a.id === id)
+      if (demo) return demo
+      throw new Error(`Album "${id}" not found`)
     }
   },
 
-  /**
-   * Fetch all artists. Mocked until the backend endpoint is live.
-   */
   async getArtists(): Promise<Artist[]> {
-    try {
-      const data = await get<Artist[] | { data: Artist[] }>('/api/v1/artists');
-      return Array.isArray(data) ? data : data.data;
-    } catch {
-      return DEMO_ARTISTS;
-    }
+    return withFallbacks(
+      async () => {
+        const data = await get<Artist[] | { data: Artist[] }>('/api/v1/artists')
+        return Array.isArray(data) ? data : data.data
+      },
+      () => getProvider().getArtists(),
+      DEMO_ARTISTS,
+    )
   },
-};
+}
 
-export default MusicService;
+export default MusicService

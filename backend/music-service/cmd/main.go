@@ -9,6 +9,9 @@ import (
 	"syscall"
 	"time"
 
+	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -70,6 +73,15 @@ func main() {
 	if err != nil {
 		logger.Fatal("listen", zap.Error(err))
 	}
+
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		logger.Info("music-service metrics starting", zap.String("port", "9090"))
+		if err := http.ListenAndServe(":9090", mux); err != nil {
+			logger.Error("metrics server", zap.Error(err))
+		}
+	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
