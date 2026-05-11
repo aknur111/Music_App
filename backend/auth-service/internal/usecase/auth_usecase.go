@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -82,10 +83,16 @@ func (u *authUsecase) Register(ctx context.Context, name, email, password string
 	verifyToken := uuid.NewString()
 	expiry := time.Now().Add(24 * time.Hour).UTC()
 
+	role := "user"
+	if adminEmail := os.Getenv("ADMIN_EMAIL"); adminEmail != "" && email == adminEmail {
+		role = "admin"
+	}
+
 	user := &entity.User{
 		ID:                uuid.NewString(),
 		Name:              name,
 		Email:             email,
+		Role:              role,
 		PasswordHash:      string(hash),
 		EmailVerified:     false,
 		EmailVerifyToken:  verifyToken,
@@ -125,7 +132,7 @@ func (u *authUsecase) issueTokenPair(ctx context.Context, user *entity.User) (st
 	rt := &entity.RefreshToken{
 		ID:        uuid.NewString(),
 		UserID:    user.ID,
-		TokenHash: sha256Hex(rawRefresh), // deterministic — safe to look up later
+		TokenHash: sha256Hex(rawRefresh),
 		ExpiresAt: time.Now().Add(u.refreshTTL),
 		CreatedAt: time.Now().UTC(),
 	}
@@ -151,9 +158,6 @@ func (u *authUsecase) Logout(ctx context.Context, accessToken string) error {
 }
 
 func (u *authUsecase) RefreshToken(ctx context.Context, rawRefresh string) (string, string, int64, error) {
-	// rawRefresh is the token ID stored as the "hash" in the DB (sha256 would be
-	// better; bcrypt is one-way so we store a deterministic hash instead).
-	// We use SHA-256 of the raw token as the lookup key.
 	lookupHash := sha256Hex(rawRefresh)
 
 	stored, err := u.tokens.FindByHash(ctx, lookupHash)
@@ -166,7 +170,6 @@ func (u *authUsecase) RefreshToken(ctx context.Context, rawRefresh string) (stri
 		return "", "", 0, ErrUserNotFound
 	}
 
-	// rotate: delete old, issue new pair
 	_ = u.tokens.DeleteByHash(ctx, lookupHash)
 	return u.issueTokenPair(ctx, user)
 }
@@ -191,7 +194,6 @@ func (u *authUsecase) ValidateToken(ctx context.Context, accessToken string) (st
 func (u *authUsecase) RequestPasswordReset(ctx context.Context, email string) error {
 	user, err := u.users.FindByEmail(ctx, email)
 	if err != nil || user == nil {
-		// return nil to avoid user-enumeration
 		return nil
 	}
 
@@ -245,7 +247,6 @@ func (u *authUsecase) ResetPassword(ctx context.Context, token, newPassword stri
 	user.PasswordResetExpiry = nil
 	user.UpdatedAt = time.Now().UTC()
 
-	// invalidate all refresh tokens for this user
 	_ = u.tokens.DeleteByUserID(ctx, user.ID)
 
 	return u.users.Update(ctx, user)
@@ -260,9 +261,15 @@ func (u *authUsecase) GetProfile(ctx context.Context, userID string) (*entity.Us
 }
 
 func (u *authUsecase) generateAccessToken(user *entity.User) (string, error) {
+	role := user.Role
+	if role == "" {
+		role = "user"
+	}
 	claims := jwt.MapClaims{
 		"sub":   user.ID,
 		"email": user.Email,
+		"name":  user.Name,
+		"role":  role,
 		"jti":   uuid.NewString(),
 		"exp":   time.Now().Add(u.accessTTL).Unix(),
 		"iat":   time.Now().Unix(),

@@ -2,11 +2,9 @@
 
 SERVICES := auth-service music-service playlist-service notification-service api-gateway
 PROTO_DIR := proto
-# protoc-gen-go and protoc-gen-go-grpc live in $(go env GOPATH)/bin
 GOPATH_BIN := $(shell go env GOPATH)/bin
 export PATH := $(GOPATH_BIN):$(PATH)
 
-# ── Protobuf ────────────────────────────────────────────────────────────────
 proto:
 	@echo "Generating protobuf stubs..."
 	@mkdir -p auth-service/gen/auth music-service/gen/music playlist-service/gen/playlist notification-service/gen/notification
@@ -40,7 +38,6 @@ proto:
 		$(PROTO_DIR)/notification/notification.proto
 	@echo "Done."
 
-# ── Docker ──────────────────────────────────────────────────────────────────
 up:
 	docker compose up -d --build
 
@@ -53,7 +50,6 @@ infra-up:
 infra-down:
 	docker compose stop postgres-auth postgres-music postgres-playlist postgres-notification redis nats jaeger prometheus loki grafana
 
-# ── Migrations ──────────────────────────────────────────────────────────────
 migrate-up:
 	@for svc in auth-service music-service playlist-service notification-service; do \
 		echo "Running migrations for $$svc..."; \
@@ -63,7 +59,6 @@ migrate-up:
 migrate-down:
 	@echo "Run per-service: cd <service> && migrate -path migrations -database <DSN> down"
 
-# ── Testing ─────────────────────────────────────────────────────────────────
 test:
 	@for svc in $(SERVICES); do \
 		echo "Testing $$svc..."; \
@@ -86,7 +81,6 @@ test-cover:
 		(cd $$svc && go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out -o coverage.html) || true; \
 	done
 
-# ── Code Quality ─────────────────────────────────────────────────────────────
 lint:
 	@for svc in $(SERVICES); do \
 		echo "Linting $$svc..."; \
@@ -112,14 +106,12 @@ vet:
 		(cd $$svc && go vet ./...) || exit 1; \
 	done
 
-# ── Build ────────────────────────────────────────────────────────────────────
 build:
 	@for svc in $(SERVICES); do \
 		echo "Building $$svc..."; \
 		(cd $$svc && mkdir -p bin && go build -o bin/$$svc ./cmd/...) || exit 1; \
 	done
 
-# ── Mock generation ──────────────────────────────────────────────────────────
 mocks:
 	@echo "Generating mocks..."
 	@for svc in auth-service music-service playlist-service notification-service; do \

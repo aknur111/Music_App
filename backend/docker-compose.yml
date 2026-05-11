@@ -115,6 +115,7 @@ services:
       REDIS_PORT: "6379"
       NATS_URL: nats://nats:4222
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@aura.dev}
     depends_on:
       postgres-auth:
         condition: service_healthy
@@ -229,7 +230,7 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     volumes:
-      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus:/etc/prometheus:ro
     ports:
       - "9090:9090"
     depends_on:
@@ -257,7 +258,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
     depends_on:
       - prometheus
       - loki
