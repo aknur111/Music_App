@@ -6,13 +6,14 @@ import (
 )
 
 type Config struct {
-	GRPCPort       string
-	PostgresDSN    string
-	RedisAddr      string
-	RedisPass      string
-	NatsURL        string
-	OTLPEndpoint   string
-	MigrationsPath string
+	GRPCPort         string
+	PostgresDSN      string
+	RedisAddr        string
+	RedisPass        string
+	NatsURL          string
+	OTLPEndpoint     string
+	MigrationsPath   string
+	MusicServiceAddr string
 }
 
 func Load() *Config {
@@ -25,11 +26,12 @@ func Load() *Config {
 			getEnv("PLAYLIST_DB_PORT", "5434"),
 			getEnv("PLAYLIST_DB_NAME", "playlist_db"),
 		),
-		RedisAddr:      getEnv("REDIS_HOST", "localhost") + ":" + getEnv("REDIS_PORT", "6379"),
-		RedisPass:      getEnv("REDIS_PASSWORD", ""),
-		NatsURL:        getEnv("NATS_URL", "nats://localhost:4222"),
-		OTLPEndpoint:   getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
-		MigrationsPath: getEnv("MIGRATIONS_PATH", "migrations"),
+		RedisAddr:        getEnv("REDIS_HOST", "localhost") + ":" + getEnv("REDIS_PORT", "6379"),
+		RedisPass:        getEnv("REDIS_PASSWORD", ""),
+		NatsURL:          getEnv("NATS_URL", "nats://localhost:4222"),
+		OTLPEndpoint:     getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
+		MigrationsPath:   getEnv("MIGRATIONS_PATH", "migrations"),
+		MusicServiceAddr: getEnv("MUSIC_SERVICE_ADDR", "music-service:50052"),
 	}
 }
 
