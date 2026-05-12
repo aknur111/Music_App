@@ -5,6 +5,8 @@ go 1.25.0
 require (
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/music-app/auth-service v0.0.0
+	github.com/music-app/music-service v0.0.0
+	github.com/music-app/playlist-service v0.0.0
 	github.com/music-app/recommendation-service v0.0.0
 	github.com/prometheus/client_golang v1.20.5
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.50.0
@@ -13,6 +15,10 @@ require (
 )
 
 replace github.com/music-app/auth-service => ../auth-service
+
+replace github.com/music-app/music-service => ../music-service
+
+replace github.com/music-app/playlist-service => ../playlist-service
 
 replace github.com/music-app/recommendation-service => ../recommendation-service
 

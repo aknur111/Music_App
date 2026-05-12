@@ -5,6 +5,8 @@ WORKDIR /app
 COPY api-gateway/go.mod api-gateway/go.sum ./api-gateway/
 COPY auth-service/go.mod ./auth-service/
 COPY recommendation-service/go.mod ./recommendation-service/
+COPY music-service/go.mod ./music-service/
+COPY playlist-service/go.mod ./playlist-service/
 
 WORKDIR /app/api-gateway
 RUN go mod download
@@ -13,6 +15,8 @@ WORKDIR /app
 COPY api-gateway ./api-gateway
 COPY auth-service ./auth-service
 COPY recommendation-service ./recommendation-service
+COPY music-service ./music-service
+COPY playlist-service ./playlist-service
 
 WORKDIR /app/api-gateway
 RUN CGO_ENABLED=0 GOOS=linux go build -o /api-gateway ./cmd/...
