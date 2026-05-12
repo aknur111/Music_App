@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/music-app/playlist-service/gen/playlist"
+	pb "github.com/NoneNon9/Music-app-gen/playlist"
 	"github.com/music-app/playlist-service/internal/usecase"
 )
 
@@ -24,6 +24,7 @@ func (s *Server) CreatePlaylist(ctx context.Context, req *pb.CreatePlaylistReque
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
 	return &pb.Playlist{
 		Id:          p.ID,
 		UserId:      p.UserID,
@@ -43,6 +44,7 @@ func (s *Server) GetPlaylist(ctx context.Context, req *pb.GetPlaylistRequest) (*
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
 	return &pb.Playlist{
 		Id:          p.ID,
 		UserId:      p.UserID,
@@ -80,6 +82,7 @@ func (s *Server) ListUserPlaylists(ctx context.Context, req *pb.ListUserPlaylist
 			UpdatedAt:   p.UpdatedAt.Unix(),
 		})
 	}
+
 	return &pb.ListUserPlaylistsResponse{Playlists: pbPlaylists, Total: int32(total)}, nil
 }
 
@@ -91,6 +94,7 @@ func (s *Server) AddSongToPlaylist(ctx context.Context, req *pb.AddSongRequest) 
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
 	return &pb.AddSongResponse{Success: true, Position: int32(position)}, nil
 }
 
@@ -101,5 +105,21 @@ func (s *Server) RemoveSongFromPlaylist(ctx context.Context, req *pb.RemoveSongR
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
 	return &pb.RemoveSongResponse{Success: true}, nil
+}
+
+func (s *Server) AddCollaborator(ctx context.Context, req *pb.AddCollaboratorRequest) (*pb.AddCollaboratorResponse, error) {
+	err := s.uc.AddCollaborator(ctx, req.PlaylistId, req.OwnerId, req.CollaboratorId)
+	if err != nil {
+		if err == usecase.ErrNotFound {
+			return nil, status.Error(codes.NotFound, "playlist not found")
+		}
+		if err == usecase.ErrForbidden {
+			return nil, status.Error(codes.PermissionDenied, "only the owner can add collaborators")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.AddCollaboratorResponse{Success: true}, nil
 }
