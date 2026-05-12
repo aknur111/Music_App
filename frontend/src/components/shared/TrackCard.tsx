@@ -7,16 +7,22 @@ import {
   Heart,
   ListPlus,
   PlusCircle,
+  Radio,
 } from 'lucide-react';
+import { SimilarTracksModal } from '@/components/shared/SimilarTracksModal';
 import { clsx } from 'clsx';
 import { AudioWaveform } from '@/components/ui/AudioWaveform';
 import { usePlayerStore } from '@/store/playerStore';
+import { useFavoritesStore } from '@/store/favoritesStore';
 import type { Track } from '@/types';
 
 interface TrackCardProps {
   track: Track;
+  queue?: Track[];
   index?: number;
   showIndex?: boolean;
+  showSimilarButton?: boolean;
+  onPlay?: (track: Track) => void;
   onAddToQueue?: (track: Track) => void;
   onAddToPlaylist?: (track: Track) => void;
   onLike?: (track: Track) => void;
@@ -31,8 +37,11 @@ const formatDuration = (seconds: number): string => {
 
 export const TrackCard: React.FC<TrackCardProps> = ({
   track,
+  queue,
   index,
   showIndex = false,
+  showSimilarButton = false,
+  onPlay,
   onAddToQueue,
   onAddToPlaylist,
   onLike,
@@ -40,20 +49,25 @@ export const TrackCard: React.FC<TrackCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [similarOpen, setSimilarOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayerStore();
+  const { isLiked, toggle: toggleFav } = useFavoritesStore();
   const isActive = currentTrack?.id === track.id;
+  const liked = isLiked(track.id);
 
   const handlePlay = () => {
     if (isActive) {
       togglePlay();
     } else {
-      playTrack(track, [track]);
+      playTrack(track, queue ?? [track]);
+      onPlay?.(track);
     }
   };
 
   return (
+    <>
     <motion.div
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
@@ -150,10 +164,41 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       </div>
 
       {/* Duration + actions */}
-      <div className="flex items-center gap-3 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0">
         <span className="text-xs text-white/30 tabular-nums">
           {formatDuration(track.duration)}
         </span>
+
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={(e) => { e.stopPropagation(); toggleFav(track); onLike?.(track); }}
+          className={clsx(
+            'w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-200',
+            liked
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100 hover:bg-white/10'
+          )}
+        >
+          <Heart
+            className={clsx(
+              'w-3.5 h-3.5 transition-colors',
+              liked ? 'fill-pink-400 text-pink-400' : 'text-white/40 hover:text-pink-400'
+            )}
+          />
+        </motion.button>
+
+        {showSimilarButton && (
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => { e.stopPropagation(); setSimilarOpen(true); }}
+            title="Similar tracks"
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-white/30 hover:text-violet-400 hover:bg-white/10 transition-all duration-200 opacity-0 group-hover:opacity-100"
+          >
+            <Radio className="w-3.5 h-3.5" />
+          </motion.button>
+        )}
 
         <div className="relative">
           <motion.button
@@ -185,7 +230,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
                 {[
                   { label: 'Add to Queue', icon: ListPlus, action: () => onAddToQueue?.(track) },
                   { label: 'Add to Playlist', icon: PlusCircle, action: () => onAddToPlaylist?.(track) },
-                  { label: 'Like', icon: Heart, action: () => onLike?.(track) },
+                  { label: liked ? 'Unlike' : 'Like', icon: Heart, action: () => { toggleFav(track); onLike?.(track); } },
                 ].map(({ label, icon: Icon, action }) => (
                   <button
                     key={label}
@@ -206,5 +251,14 @@ export const TrackCard: React.FC<TrackCardProps> = ({
         </div>
       </div>
     </motion.div>
+
+    {showSimilarButton && (
+      <SimilarTracksModal
+        trackId={track.id}
+        isOpen={similarOpen}
+        onClose={() => setSimilarOpen(false)}
+      />
+    )}
+    </>
   );
 };

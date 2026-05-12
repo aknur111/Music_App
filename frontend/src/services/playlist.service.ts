@@ -1,91 +1,69 @@
-import { get, post, del } from '@/services/api';
-import api from '@/services/api';
-import type { Playlist, PlaylistCreateInput, PlaylistUpdateInput } from '@/types';
-import { MOCK_PLAYLISTS } from '@/lib/mockData';
+import type { Playlist, PlaylistCreateInput, PlaylistUpdateInput } from '@/types'
+import { MOCK_PLAYLISTS } from '@/lib/mockData'
 
-// ─── PlaylistService ──────────────────────────────────────────────────────────
+let _playlists: Playlist[] = MOCK_PLAYLISTS.map((p) => ({ ...p }))
 
 export const PlaylistService = {
-  /**
-   * Fetch the authenticated user's playlists.
-   * Falls back to MOCK_PLAYLISTS if the endpoint is unavailable.
-   */
   async getUserPlaylists(): Promise<Playlist[]> {
-    try {
-      const data = await get<Playlist[] | { data: Playlist[] }>('/api/v1/playlists');
-      return Array.isArray(data) ? data : data.data;
-    } catch {
-      return MOCK_PLAYLISTS;
-    }
+    return _playlists
   },
 
-  /**
-   * Fetch a single playlist by ID.
-   */
   async getPlaylist(id: string): Promise<Playlist> {
-    try {
-      return await get<Playlist>(`/api/v1/playlists/${id}`);
-    } catch {
-      const mock = MOCK_PLAYLISTS.find((p) => p.id === id);
-      if (mock) return mock;
-      throw new Error(`Playlist with id "${id}" not found`);
-    }
+    const playlist = _playlists.find((p) => p.id === id)
+    if (playlist) return playlist
+    throw new Error(`Playlist "${id}" not found`)
   },
 
-  /**
-   * Create a new playlist for the authenticated user.
-   * Provides an optimistic mock fallback when the endpoint is unavailable.
-   */
   async createPlaylist(input: PlaylistCreateInput): Promise<Playlist> {
-    try {
-      return await post<Playlist>('/api/v1/playlists', input);
-    } catch {
-      const now = new Date().toISOString();
-      const mockPlaylist: Playlist = {
-        id: `playlist-${Date.now()}`,
-        name: input.name,
-        description: input.description ?? '',
-        coverUrl: input.coverUrl ?? '',
-        trackIds: [],
-        tracks: [],
-        ownerId: 'local-user',
-        isPublic: input.isPublic ?? false,
-        followerCount: 0,
-        createdAt: now,
-        updatedAt: now,
-      };
-      return mockPlaylist;
+    const now = new Date().toISOString()
+    const playlist: Playlist = {
+      id: `playlist-${Date.now()}`,
+      name: input.name,
+      description: input.description ?? '',
+      coverUrl: input.coverUrl ?? '',
+      trackIds: [],
+      tracks: [],
+      ownerId: 'local-user',
+      isPublic: input.isPublic ?? false,
+      followerCount: 0,
+      createdAt: now,
+      updatedAt: now,
     }
+    _playlists = [..._playlists, playlist]
+    return playlist
   },
 
-  /**
-   * Add a track to a playlist.
-   */
   async addTrack(playlistId: string, trackId: string): Promise<void> {
-    await post<void>(`/api/v1/playlists/${playlistId}/songs`, { song_id: trackId });
+    _playlists = _playlists.map((p) =>
+      p.id === playlistId && !p.trackIds.includes(trackId)
+        ? { ...p, trackIds: [...p.trackIds, trackId] }
+        : p,
+    )
   },
 
-  /**
-   * Remove a track from a playlist.
-   */
   async removeTrack(playlistId: string, trackId: string): Promise<void> {
-    await del<void>(`/api/v1/playlists/${playlistId}/songs/${trackId}`);
+    _playlists = _playlists.map((p) =>
+      p.id === playlistId
+        ? {
+            ...p,
+            trackIds: p.trackIds.filter((id) => id !== trackId),
+            tracks: (p.tracks ?? []).filter((t) => t.id !== trackId),
+          }
+        : p,
+    )
   },
 
-  /**
-   * Update playlist metadata (name, description, cover, visibility).
-   */
   async updatePlaylist(id: string, updates: PlaylistUpdateInput): Promise<Playlist> {
-    const response = await api.patch<Playlist>(`/api/v1/playlists/${id}`, updates);
-    return response.data;
+    const playlist = _playlists.find((p) => p.id === id)
+    if (!playlist) throw new Error(`Playlist "${id}" not found`)
+    const updated = { ...playlist, ...updates, updatedAt: new Date().toISOString() }
+    _playlists = _playlists.map((p) => (p.id === id ? updated : p))
+    return updated
   },
 
-  /**
-   * Permanently delete a playlist.
-   */
   async deletePlaylist(id: string): Promise<void> {
-    await del<void>(`/api/v1/playlists/${id}`);
+    _playlists = _playlists.filter((p) => p.id !== id)
   },
-};
+}
 
-export default PlaylistService;
+export default PlaylistService

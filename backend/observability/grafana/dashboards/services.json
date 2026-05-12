@@ -1,61 +1,166 @@
 {
-  "title": "Music App Services",
+  "title": "AURA — Services & Resources",
   "uid": "music-app-services",
   "schemaVersion": 38,
   "version": 1,
   "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["aura", "services"],
   "panels": [
     {
       "id": 1,
-      "title": "gRPC Request Rate",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "targets": [
-        {
-          "datasource": "Prometheus",
-          "expr": "sum(rate(grpc_server_handled_total[1m])) by (grpc_service)",
-          "legendFormat": "{{grpc_service}}"
-        }
-      ]
+      "type": "row",
+      "title": "Service Health",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
     },
     {
       "id": 2,
-      "title": "gRPC Error Rate",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "type": "bargauge",
+      "title": "Service Uptime (scrape success)",
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        {
-          "datasource": "Prometheus",
-          "expr": "sum(rate(grpc_server_handled_total{grpc_code!=\"OK\"}[1m])) by (grpc_service, grpc_code)",
-          "legendFormat": "{{grpc_service}} {{grpc_code}}"
+        { "expr": "up", "legendFormat": "{{job}}" }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "valueMode": "color",
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
         }
-      ]
+      }
     },
     {
-      "id": 3,
-      "title": "gRPC Latency P99",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "targets": [
-        {
-          "datasource": "Prometheus",
-          "expr": "histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket[5m])) by (le, grpc_service))",
-          "legendFormat": "{{grpc_service}} p99"
-        }
-      ]
+      "id": 10,
+      "type": "row",
+      "title": "Go Goroutines",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "collapsed": false
     },
     {
-      "id": 4,
-      "title": "HTTP Gateway Request Rate",
+      "id": 11,
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "title": "Goroutines — all services",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        {
-          "datasource": "Prometheus",
-          "expr": "sum(rate(http_requests_total[1m])) by (handler, method)",
-          "legendFormat": "{{method}} {{handler}}"
-        }
-      ]
+        { "expr": "go_goroutines{job=\"api-gateway\"}", "legendFormat": "api-gateway" },
+        { "expr": "go_goroutines{job=\"auth-service\"}", "legendFormat": "auth-service" },
+        { "expr": "go_goroutines{job=\"music-service\"}", "legendFormat": "music-service" },
+        { "expr": "go_goroutines{job=\"playlist-service\"}", "legendFormat": "playlist-service" },
+        { "expr": "go_goroutines{job=\"notification-service\"}", "legendFormat": "notification-service" }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "last"] }
+      },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" } } }
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Memory",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "collapsed": false
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Heap In-Use — all services",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "go_memstats_heap_inuse_bytes{job=\"api-gateway\"}", "legendFormat": "api-gateway" },
+        { "expr": "go_memstats_heap_inuse_bytes{job=\"auth-service\"}", "legendFormat": "auth-service" },
+        { "expr": "go_memstats_heap_inuse_bytes{job=\"music-service\"}", "legendFormat": "music-service" },
+        { "expr": "go_memstats_heap_inuse_bytes{job=\"playlist-service\"}", "legendFormat": "playlist-service" },
+        { "expr": "go_memstats_heap_inuse_bytes{job=\"notification-service\"}", "legendFormat": "notification-service" }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "last"] }
+      },
+      "fieldConfig": { "defaults": { "unit": "bytes", "color": { "mode": "palette-classic" } } }
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "GC Cycles Rate — all services",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(go_gc_duration_seconds_count{job=\"api-gateway\"}[5m])", "legendFormat": "api-gateway" },
+        { "expr": "rate(go_gc_duration_seconds_count{job=\"auth-service\"}[5m])", "legendFormat": "auth-service" },
+        { "expr": "rate(go_gc_duration_seconds_count{job=\"music-service\"}[5m])", "legendFormat": "music-service" },
+        { "expr": "rate(go_gc_duration_seconds_count{job=\"playlist-service\"}[5m])", "legendFormat": "playlist-service" },
+        { "expr": "rate(go_gc_duration_seconds_count{job=\"notification-service\"}[5m])", "legendFormat": "notification-service" }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }
+      },
+      "fieldConfig": { "defaults": { "unit": "ops", "color": { "mode": "palette-classic" } } }
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "CPU",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "collapsed": false
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "CPU Usage — all services",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(process_cpu_seconds_total{job=\"api-gateway\"}[5m])", "legendFormat": "api-gateway" },
+        { "expr": "rate(process_cpu_seconds_total{job=\"auth-service\"}[5m])", "legendFormat": "auth-service" },
+        { "expr": "rate(process_cpu_seconds_total{job=\"music-service\"}[5m])", "legendFormat": "music-service" },
+        { "expr": "rate(process_cpu_seconds_total{job=\"playlist-service\"}[5m])", "legendFormat": "playlist-service" },
+        { "expr": "rate(process_cpu_seconds_total{job=\"notification-service\"}[5m])", "legendFormat": "notification-service" }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "last"] }
+      },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "color": { "mode": "palette-classic" } } }
+    },
+    {
+      "id": 40,
+      "type": "row",
+      "title": "Open File Descriptors",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 33 },
+      "collapsed": false
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "Open FDs — all services",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 34 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "process_open_fds{job=\"api-gateway\"}", "legendFormat": "api-gateway" },
+        { "expr": "process_open_fds{job=\"auth-service\"}", "legendFormat": "auth-service" },
+        { "expr": "process_open_fds{job=\"music-service\"}", "legendFormat": "music-service" },
+        { "expr": "process_open_fds{job=\"playlist-service\"}", "legendFormat": "playlist-service" },
+        { "expr": "process_open_fds{job=\"notification-service\"}", "legendFormat": "notification-service" }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["last"] }
+      },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" } } }
     }
   ]
 }

@@ -26,7 +26,9 @@ const AlbumDetailPage  = lazy(() => import('@/pages/app/AlbumDetailPage'))
 const PlaylistDetail   = lazy(() => import('@/pages/app/PlaylistDetailPage'))
 const LibraryPage      = lazy(() => import('@/pages/app/LibraryPage'))
 const FavoritesPage    = lazy(() => import('@/pages/app/FavoritesPage'))
-const ProfilePage      = lazy(() => import('@/pages/app/ProfilePage'))
+const ProfilePage          = lazy(() => import('@/pages/app/ProfilePage'))
+const DiscoverMoodsPage    = lazy(() => import('@/pages/app/DiscoverMoodsPage'))
+const MoodDetailPage       = lazy(() => import('@/pages/app/MoodDetailPage'))
 
 
 const AdminOverviewPage  = lazy(() => import('@/pages/admin/AdminOverviewPage'))
@@ -117,6 +119,18 @@ export const router = createBrowserRouter([
         element: <PageSuspense><TracksPage /></PageSuspense>,
       },
       {
+        path: '/discover',
+        element: <PageSuspense><TracksPage /></PageSuspense>,
+      },
+      {
+        path: '/discover/moods',
+        element: <PageSuspense><DiscoverMoodsPage /></PageSuspense>,
+      },
+      {
+        path: '/discover/moods/:mood',
+        element: <PageSuspense><MoodDetailPage /></PageSuspense>,
+      },
+      {
         path: '/artists',
         element: <PageSuspense><ArtistsPage /></PageSuspense>,
       },
@@ -179,6 +193,6 @@ export const router = createBrowserRouter([
 
   {
     path: '*',
-    element: <Navigate to="/" replace />,
+    element: <Navigate to="/home" replace />,
   },
 ])

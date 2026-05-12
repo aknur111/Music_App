@@ -18,6 +18,8 @@ Thumbs.db
 **/gen/
 
 data/
+!backend/recommendation-service/data/.gitkeep
+backend/recommendation-service/data/*.csv
 
 .claude/
 
