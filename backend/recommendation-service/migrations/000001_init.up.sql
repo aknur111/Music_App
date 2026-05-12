@@ -3,9 +3,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE tracks (
     id                UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
     spotify_id        VARCHAR(255) UNIQUE NOT NULL,
-    name              VARCHAR(500) NOT NULL,
-    artists           VARCHAR(1000) NOT NULL,
-    album             VARCHAR(500),
+    name              TEXT NOT NULL,
+    artists           TEXT NOT NULL,
+    album             TEXT,
     genre             VARCHAR(100),
     duration_ms       INT,
     popularity        INT,

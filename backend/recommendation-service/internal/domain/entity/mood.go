@@ -1,5 +1,7 @@
 package entity
 
+import "fmt"
+
 // Mood is a named emotional state used to drive track recommendations.
 type Mood string
 
@@ -23,6 +25,15 @@ const (
 // mood — especially "sad" (valence=0.15) and "angry" (valence=0.20) which
 // may yield sparse results when combined with the popularity>=30 filter.
 // Adjust valence thresholds empirically if result sets are too small.
+// ParseMood validates a string mood name and returns the typed Mood constant.
+// Returns an error with the full list of valid values on unknown input.
+func ParseMood(s string) (Mood, error) {
+	if _, ok := MoodVectors[Mood(s)]; ok {
+		return Mood(s), nil
+	}
+	return "", fmt.Errorf("unknown mood %q: must be one of happy, sad, energetic, chill, focus, workout, romantic, angry", s)
+}
+
 var MoodVectors = map[Mood][4]float64{
 	//              valence  energy  danceability  tempo_norm
 	MoodHappy:     {0.85, 0.75, 0.80, 0.60},
