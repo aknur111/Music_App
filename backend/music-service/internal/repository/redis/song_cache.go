@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	goredis "github.com/redis/go-redis/v9"
 	"github.com/music-app/music-service/internal/domain/entity"
 	"github.com/music-app/music-service/internal/domain/repository"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 const (
