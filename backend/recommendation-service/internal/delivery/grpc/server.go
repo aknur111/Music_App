@@ -127,3 +127,26 @@ func trackToProto(t *entity.Track) *pb.TrackProto {
 		PreviewUrl:       t.PreviewURL,
 	}
 }
+
+func (s *Server) GetTrendingTracks(ctx context.Context, req *pb.TrendingRequest) (*pb.TracksResponse, error) {
+	limit := int(req.Limit)
+	if limit <= 0 {
+		limit = 20
+	}
+	tracks, err := s.uc.GetTrending(ctx, limit)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	resp := &pb.TracksResponse{}
+	for _, t := range tracks {
+		resp.Tracks = append(resp.Tracks, trackToProto(t))
+	}
+	return resp, nil
+}
+
+func (s *Server) RateTrack(ctx context.Context, req *pb.RateTrackRequest) (*pb.RateTrackResponse, error) {
+	if err := s.uc.RateTrack(ctx, req.UserId, req.TrackId, req.Rating); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &pb.RateTrackResponse{Success: true}, nil
+}

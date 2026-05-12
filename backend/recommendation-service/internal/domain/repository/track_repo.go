@@ -28,4 +28,7 @@ type TrackRepository interface {
 	// (valence, energy, danceability) index for a rough database-side filter.
 	// The usecase layer re-ranks by full cosine similarity against vector.
 	GetTopByFeatureProximity(ctx context.Context, vector [4]float64, limit int) ([]*entity.Track, error)
+
+	// GetTrending returns the top-N tracks by popularity score.
+	GetTrending(ctx context.Context, limit int) ([]*entity.Track, error)
 }

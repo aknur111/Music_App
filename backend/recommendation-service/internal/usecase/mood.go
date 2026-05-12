@@ -28,6 +28,42 @@ func userRecsCacheKey(userID string) string {
 	return fmt.Sprintf("user:%s:recommendations", userID)
 }
 
+func (uc *recommendationUsecase) GetTrending(ctx context.Context, limit int) ([]*entity.Track, error) {
+	tracks, err := uc.trackRepo.GetTrending(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("GetTrending: %w", err)
+	}
+	return tracks, nil
+}
+
+// RateTrack records an explicit rating (1=dislike, 5=like) and updates the user profile.
+// Like RecordPlay but applies a stronger weight for explicit ratings.
+func (uc *recommendationUsecase) RateTrack(ctx context.Context, userID, trackID string, rating int32) error {
+	track, err := uc.trackRepo.GetByID(ctx, trackID)
+	if err != nil {
+		return fmt.Errorf("GetByID: %w", err)
+	}
+	if track == nil {
+		return fmt.Errorf("track %q not found", trackID)
+	}
+
+	// weight: like (rating>=4) → stronger signal (0.4); dislike → negative update skipped
+	if rating >= 4 {
+		if _, err := uc.profileRepo.UpsertWithWeightedAverage(
+			ctx, userID, track.Valence, track.Energy, track.Danceability, track.Tempo,
+		); err != nil {
+			return fmt.Errorf("UpsertWithWeightedAverage: %w", err)
+		}
+	}
+
+	if err := uc.profileRepo.InsertPlayHistory(ctx, userID, track.ID); err != nil {
+		return fmt.Errorf("InsertPlayHistory: %w", err)
+	}
+
+	_ = uc.redis.Del(ctx, userRecsCacheKey(userID))
+	return nil
+}
+
 // GetByMood returns the tracks best matching the mood vector.
 // The top-100 results are cached in Redis for 1h to avoid repeated full-table scans.
 func (uc *recommendationUsecase) GetByMood(ctx context.Context, mood entity.Mood, limit int) ([]*entity.Track, error) {

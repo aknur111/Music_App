@@ -15,8 +15,6 @@ go.work.sum
 .DS_Store
 Thumbs.db
 
-**/gen/
-
 data/
 !backend/recommendation-service/data/.gitkeep
 backend/recommendation-service/data/*.csv

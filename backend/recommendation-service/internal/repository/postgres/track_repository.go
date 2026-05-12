@@ -174,6 +174,28 @@ func scanTrack(row pgx.Row) (*entity.Track, error) {
 	return t, nil
 }
 
+func (r *trackRepository) GetTrending(ctx context.Context, limit int) ([]*entity.Track, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	rows, err := r.db.Query(ctx,
+		`SELECT id, spotify_id, name, artists, COALESCE(album,''), COALESCE(genre,''),
+		        COALESCE(duration_ms,0), COALESCE(popularity,0),
+		        COALESCE(valence,0), COALESCE(energy,0), COALESCE(danceability,0), COALESCE(tempo,0),
+		        COALESCE(acousticness,0), COALESCE(instrumentalness,0), COALESCE(loudness,0), COALESCE(speechiness,0),
+		        COALESCE(preview_url,'')
+		 FROM tracks
+		 WHERE popularity IS NOT NULL
+		 ORDER BY popularity DESC
+		 LIMIT $1`, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return collectTracks(rows)
+}
+
 func collectTracks(rows pgx.Rows) ([]*entity.Track, error) {
 	var tracks []*entity.Track
 	for rows.Next() {

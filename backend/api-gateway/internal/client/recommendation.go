@@ -51,3 +51,20 @@ func (c *RecommendationClient) RecordPlayback(ctx context.Context, userID, track
 	_, err := c.grpc.RecordPlayback(ctx, &recommpb.PlaybackRequest{UserId: userID, TrackId: trackID})
 	return err
 }
+
+func (c *RecommendationClient) GetTrending(ctx context.Context, limit int32) (interface{}, error) {
+	resp, err := c.grpc.GetTrendingTracks(ctx, &recommpb.TrendingRequest{Limit: limit})
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetTracks(), nil
+}
+
+func (c *RecommendationClient) RateTrack(ctx context.Context, userID, trackID string, rating int32) error {
+	_, err := c.grpc.RateTrack(ctx, &recommpb.RateTrackRequest{
+		UserId:  userID,
+		TrackId: trackID,
+		Rating:  rating,
+	})
+	return err
+}
