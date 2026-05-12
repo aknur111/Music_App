@@ -95,23 +95,41 @@ func main() {
 	jobs := make(chan trackRow, *workers*2)
 	var updated, failed, notFound atomic.Int64
 
+	// iTunes Search API allows ~20 req/min. Use a shared rate-limit ticker
+	// so all workers together stay within the limit regardless of worker count.
+	// 1 tick per 3s = 20 req/min, giving a comfortable safety margin.
+	rateTick := time.NewTicker(3 * time.Second)
+	defer rateTick.Stop()
+
 	var wg sync.WaitGroup
 	for i := 0; i < *workers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			client := &http.Client{Timeout: 8 * time.Second}
+			client := &http.Client{Timeout: 10 * time.Second}
+			backoff := time.Second
 			for t := range jobs {
+				<-rateTick.C // wait for rate-limit token
 				previewURL, err := lookupITunes(client, t.name, t.artists)
 				if err != nil {
+					if isRateLimited(err) {
+						logger.Warn("iTunes rate limited — backing off", zap.Duration("backoff", backoff))
+						time.Sleep(backoff)
+						if backoff < 5*time.Minute {
+							backoff *= 2
+						}
+						// re-queue the track by putting it back would be complex;
+						// just count as failed and let a re-run handle remaining.
+					} else {
+						backoff = time.Second // reset on non-429 errors
+					}
 					logger.Warn("iTunes lookup failed", zap.String("id", t.id), zap.Error(err))
 					failed.Add(1)
-					time.Sleep(200 * time.Millisecond)
 					continue
 				}
+				backoff = time.Second // successful call resets backoff
 				if previewURL == "" {
 					notFound.Add(1)
-					time.Sleep(200 * time.Millisecond)
 					continue
 				}
 				if _, err := db.Exec(ctx,
@@ -123,7 +141,6 @@ func main() {
 				} else {
 					updated.Add(1)
 				}
-				time.Sleep(200 * time.Millisecond) // ~5 req/s per worker = 25 req/s total
 			}
 		}()
 	}
@@ -159,6 +176,14 @@ func main() {
 		zap.Int64("not_found", notFound.Load()),
 		zap.Int64("failed", failed.Load()),
 	)
+}
+
+func isRateLimited(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "429") || strings.Contains(s, "403")
 }
 
 func lookupITunes(client *http.Client, trackName, artists string) (string, error) {
