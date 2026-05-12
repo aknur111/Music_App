@@ -1,0 +1,5 @@
+ALTER TABLE songs
+DROP COLUMN IF EXISTS uploader_id;
+
+ALTER TABLE songs
+DROP COLUMN IF EXISTS updated_at;
