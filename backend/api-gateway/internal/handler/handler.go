@@ -56,6 +56,22 @@ func Router(clients *Clients) http.Handler {
 	r.Get("/api/v1/auth/profile", profileHandler(clients))
 
 	authMw := middleware.Auth(clients.ValidateToken)
+
+	// ── Music endpoints ───────────────────────────────────────────────────────
+	r.With(authMw).Get("/api/v1/songs", listSongsHandler(clients))
+	r.With(authMw).Get("/api/v1/songs/search", searchSongsHandler(clients))
+	r.With(authMw).Get("/api/v1/songs/{song_id}", getSongHandler(clients))
+	r.With(authMw).Get("/api/v1/albums", listAlbumsHandler(clients))
+	r.With(authMw).Get("/api/v1/albums/{album_id}", getAlbumHandler(clients))
+
+	// ── Playlist endpoints ────────────────────────────────────────────────────
+	r.With(authMw).Post("/api/v1/playlists", createPlaylistHandler(clients))
+	r.With(authMw).Get("/api/v1/playlists", listPlaylistsHandler(clients))
+	r.With(authMw).Get("/api/v1/playlists/{playlist_id}", getPlaylistHandler(clients))
+	r.With(authMw).Post("/api/v1/playlists/{playlist_id}/songs", addSongHandler(clients))
+	r.With(authMw).Delete("/api/v1/playlists/{playlist_id}/songs/{song_id}", removeSongHandler(clients))
+
+	// ── Recommendation endpoints ──────────────────────────────────────────────
 	r.Route("/api/v1/recommendations", func(r chi.Router) {
 		r.Use(authMw)
 		r.Get("/moods", listMoodsHandler())
@@ -351,4 +367,200 @@ func parseLimit(r *http.Request, defaultVal int) int {
 		return defaultVal
 	}
 	return n
+}
+
+func parsePage(r *http.Request) int {
+	s := r.URL.Query().Get("page")
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 1 {
+		return 1
+	}
+	return n
+}
+
+// ── Music handlers ────────────────────────────────────────────────────────────
+
+func getSongHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetSong == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "music service unavailable"})
+			return
+		}
+		id := chi.URLParam(r, "song_id")
+		song, err := c.GetSong(r.Context(), id)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, song)
+	}
+}
+
+func listSongsHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.ListSongs == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "music service unavailable"})
+			return
+		}
+		artistID := r.URL.Query().Get("artist_id")
+		albumID := r.URL.Query().Get("album_id")
+		result, err := c.ListSongs(r.Context(), artistID, albumID, parsePage(r), parseLimit(r, 20))
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
+	}
+}
+
+func searchSongsHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.SearchSongs == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "music service unavailable"})
+			return
+		}
+		query := r.URL.Query().Get("q")
+		if query == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "q is required"})
+			return
+		}
+		result, err := c.SearchSongs(r.Context(), query, parsePage(r), parseLimit(r, 20))
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
+	}
+}
+
+func getAlbumHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetAlbum == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "music service unavailable"})
+			return
+		}
+		id := chi.URLParam(r, "album_id")
+		album, err := c.GetAlbum(r.Context(), id)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, album)
+	}
+}
+
+func listAlbumsHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.ListAlbums == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "music service unavailable"})
+			return
+		}
+		artistID := r.URL.Query().Get("artist_id")
+		result, err := c.ListAlbums(r.Context(), artistID, parsePage(r), parseLimit(r, 20))
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
+	}
+}
+
+// ── Playlist handlers ─────────────────────────────────────────────────────────
+
+func createPlaylistHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.CreatePlaylist == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "playlist service unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		var body struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			return
+		}
+		playlist, err := c.CreatePlaylist(r.Context(), userID, body.Name, body.Description)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, playlist)
+	}
+}
+
+func getPlaylistHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetPlaylist == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "playlist service unavailable"})
+			return
+		}
+		id := chi.URLParam(r, "playlist_id")
+		userID := middleware.GetUserID(r.Context())
+		playlist, err := c.GetPlaylist(r.Context(), id, userID)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, playlist)
+	}
+}
+
+func listPlaylistsHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.ListPlaylists == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "playlist service unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		result, err := c.ListPlaylists(r.Context(), userID, parsePage(r), parseLimit(r, 20))
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, result)
+	}
+}
+
+func addSongHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.AddSong == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "playlist service unavailable"})
+			return
+		}
+		playlistID := chi.URLParam(r, "playlist_id")
+		userID := middleware.GetUserID(r.Context())
+		var body struct {
+			SongID string `json:"song_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.SongID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "song_id is required"})
+			return
+		}
+		position, err := c.AddSong(r.Context(), playlistID, body.SongID, userID)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"position": position})
+	}
+}
+
+func removeSongHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.RemoveSong == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "playlist service unavailable"})
+			return
+		}
+		playlistID := chi.URLParam(r, "playlist_id")
+		songID := chi.URLParam(r, "song_id")
+		userID := middleware.GetUserID(r.Context())
+		if err := c.RemoveSong(r.Context(), playlistID, songID, userID); err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusNoContent, nil)
+	}
 }
