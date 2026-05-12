@@ -124,5 +124,6 @@ func trackToProto(t *entity.Track) *pb.TrackProto {
 		Instrumentalness: t.Instrumentalness,
 		Loudness:         t.Loudness,
 		Speechiness:      t.Speechiness,
+		PreviewUrl:       t.PreviewURL,
 	}
 }

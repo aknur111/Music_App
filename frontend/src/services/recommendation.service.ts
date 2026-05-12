@@ -21,6 +21,7 @@ interface RecommendTrackRaw {
   instrumentalness: number
   loudness: number
   speechiness: number
+  preview_url?: string
 }
 
 async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
@@ -33,7 +34,7 @@ async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
     albumId: '',
     duration: Math.round(raw.duration_ms / 1000),
     coverUrl: '',
-    audioUrl: '',
+    audioUrl: raw.preview_url ?? '',
     genre: raw.genre,
     playCount: raw.popularity,
     likeCount: 0,
@@ -54,7 +55,10 @@ async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
     const hits = await fetchTracks({ search: raw.name, limit: 1 })
     if (hits.length > 0) {
       track.coverUrl = hits[0].image
-      track.audioUrl = hits[0].audio
+      // Use Jamendo audio only as fallback when backend has no iTunes preview URL
+      if (!track.audioUrl) {
+        track.audioUrl = hits[0].audio
+      }
     }
   } catch {
     // enrichment is best-effort; track usable with placeholder cover

@@ -24,7 +24,8 @@ func NewTrackRepository(db *pgxpool.Pool) repository.TrackRepository {
 func (r *trackRepository) GetByID(ctx context.Context, id string) (*entity.Track, error) {
 	row := r.db.QueryRow(ctx,
 		`SELECT id, spotify_id, name, artists, album, genre, duration_ms, popularity,
-		        valence, energy, danceability, tempo, acousticness, instrumentalness, loudness, speechiness
+		        valence, energy, danceability, tempo, acousticness, instrumentalness, loudness, speechiness,
+		        COALESCE(preview_url, '')
 		 FROM tracks WHERE id = $1`, id)
 	t, err := scanTrack(row)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -36,7 +37,8 @@ func (r *trackRepository) GetByID(ctx context.Context, id string) (*entity.Track
 func (r *trackRepository) GetBySpotifyID(ctx context.Context, spotifyID string) (*entity.Track, error) {
 	row := r.db.QueryRow(ctx,
 		`SELECT id, spotify_id, name, artists, album, genre, duration_ms, popularity,
-		        valence, energy, danceability, tempo, acousticness, instrumentalness, loudness, speechiness
+		        valence, energy, danceability, tempo, acousticness, instrumentalness, loudness, speechiness,
+		        COALESCE(preview_url, '')
 		 FROM tracks WHERE spotify_id = $1`, spotifyID)
 	t, err := scanTrack(row)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -107,7 +109,8 @@ func (r *trackRepository) insertBatch(ctx context.Context, batch []*entity.Track
 func (r *trackRepository) GetCandidatesForMood(ctx context.Context, _ entity.Mood, minPopularity int, limit int) ([]*entity.Track, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT id, spotify_id, name, artists, album, genre, duration_ms, popularity,
-		        valence, energy, danceability, tempo, acousticness, instrumentalness, loudness, speechiness
+		        valence, energy, danceability, tempo, acousticness, instrumentalness, loudness, speechiness,
+		        COALESCE(preview_url, '')
 		 FROM tracks
 		 WHERE popularity >= $1
 		 ORDER BY popularity DESC
@@ -132,7 +135,8 @@ func (r *trackRepository) GetTopByFeatureProximity(ctx context.Context, vector [
 	v, e, d := vector[0], vector[1], vector[2]
 	rows, err := r.db.Query(ctx,
 		`SELECT id, spotify_id, name, artists, album, genre, duration_ms, popularity,
-		        valence, energy, danceability, tempo, acousticness, instrumentalness, loudness, speechiness
+		        valence, energy, danceability, tempo, acousticness, instrumentalness, loudness, speechiness,
+		        COALESCE(preview_url, '')
 		 FROM tracks
 		 WHERE popularity >= $1
 		   AND valence      BETWEEN $2 AND $3
@@ -162,6 +166,7 @@ func scanTrack(row pgx.Row) (*entity.Track, error) {
 		&t.DurationMS, &t.Popularity,
 		&t.Valence, &t.Energy, &t.Danceability, &t.Tempo,
 		&t.Acousticness, &t.Instrumentalness, &t.Loudness, &t.Speechiness,
+		&t.PreviewURL,
 	)
 	if err != nil {
 		return nil, err
@@ -178,6 +183,7 @@ func collectTracks(rows pgx.Rows) ([]*entity.Track, error) {
 			&t.DurationMS, &t.Popularity,
 			&t.Valence, &t.Energy, &t.Danceability, &t.Tempo,
 			&t.Acousticness, &t.Instrumentalness, &t.Loudness, &t.Speechiness,
+			&t.PreviewURL,
 		); err != nil {
 			return nil, err
 		}
