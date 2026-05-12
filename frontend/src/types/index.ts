@@ -24,6 +24,8 @@ export type {
   PlaylistAddTrackInput,
 } from './playlist'
 
+export type { MoodMeta } from './recommendation'
+
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {
