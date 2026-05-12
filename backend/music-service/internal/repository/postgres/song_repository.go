@@ -99,10 +99,64 @@ func (r *songRepository) Search(ctx context.Context, query string, page, limit i
 }
 
 func (r *songRepository) Create(ctx context.Context, s *entity.Song) error {
-	_, err := r.db.Exec(ctx,
-		`INSERT INTO songs (id, title, artist_id, album_id, duration_s, genre)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		s.ID, s.Title, s.ArtistID, s.AlbumID, s.DurationS, s.Genre,
+	_, err := r.db.Exec(
+		ctx,
+		`INSERT INTO songs
+		 (
+		   id,
+		   title,
+		   artist_id,
+		   album_id,
+		   uploader_id,
+		   duration_s,
+		   genre
+		 )
+		 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+		s.ID,
+		s.Title,
+		s.ArtistID,
+		s.AlbumID,
+		s.UploaderID,
+		s.DurationS,
+		s.Genre,
 	)
+	return err
+}
+
+func (r *songRepository) Update(
+	ctx context.Context,
+	s *entity.Song,
+) error {
+
+	_, err := r.db.Exec(
+		ctx,
+		`UPDATE songs
+		 SET title = $2,
+		     album_id = $3,
+		     duration_s = $4,
+		     genre = $5,
+		     updated_at = NOW()
+		 WHERE id = $1`,
+		s.ID,
+		s.Title,
+		s.AlbumID,
+		s.DurationS,
+		s.Genre,
+	)
+
+	return err
+}
+
+func (r *songRepository) Delete(
+	ctx context.Context,
+	id string,
+) error {
+
+	_, err := r.db.Exec(
+		ctx,
+		`DELETE FROM songs WHERE id = $1`,
+		id,
+	)
+
 	return err
 }
