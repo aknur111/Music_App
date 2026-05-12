@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -49,6 +50,10 @@ func main() {
 	defer logger.Sync()
 
 	cfg := config.Load()
+	// Allow overriding the full DSN via POSTGRES_DSN env var.
+	if dsn := os.Getenv("POSTGRES_DSN"); dsn != "" {
+		cfg.PostgresDSN = dsn
+	}
 
 	ctx := context.Background()
 	db, err := infraPG.NewPool(ctx, cfg.PostgresDSN)
