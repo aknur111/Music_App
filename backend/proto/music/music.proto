@@ -4,6 +4,8 @@ package music;
 
 option go_package = "github.com/music-app/music-service/gen/music;music";
 
+import "google/protobuf/timestamp.proto";
+
 // ── Common models ─────────────────────────────────────────────────────────────
 
 message Song {
@@ -15,7 +17,7 @@ message Song {
   string   album      = 6;
   int32    duration_s = 7;
   string   genre      = 8;
-  int64    created_at = 9;
+  google.protobuf.Timestamp created_at = 9;
 }
 
 message Album {
@@ -27,6 +29,13 @@ message Album {
   repeated Song  songs      = 6;
 }
 
+message Artist {
+  string id        = 1;
+  string name      = 2;
+  string bio       = 3;
+  int64 created_at = 4;
+}
+
 message Pagination {
   int32 page  = 1;
   int32 limit = 2;
@@ -36,6 +45,30 @@ message Pagination {
 
 message GetSongRequest {
   string song_id = 1;
+}
+
+message CreateSongRequest {
+  string title      = 1;
+  string artist_id  = 2;
+  string album_id   = 3;
+  int32 duration_s  = 4;
+  string genre      = 5;
+}
+
+message UpdateSongRequest {
+  string song_id    = 1;
+  string title      = 2;
+  string album_id   = 3;
+  int32 duration_s  = 4;
+  string genre      = 5;
+}
+
+message DeleteSongRequest {
+  string song_id = 1;
+}
+
+message DeleteSongResponse {
+  bool success = 1;
 }
 
 message ListSongsRequest {
@@ -63,6 +96,12 @@ message GetAlbumRequest {
   string album_id = 1;
 }
 
+message CreateAlbumRequest {
+  string title = 1;
+  string artist_id = 2;
+  int32 year = 3;
+}
+
 message ListAlbumsRequest {
   Pagination pagination = 1;
   string     artist_id  = 2;
@@ -71,6 +110,38 @@ message ListAlbumsRequest {
 message ListAlbumsResponse {
   repeated Album albums = 1;
   int32          total  = 2;
+}
+
+message GetArtistRequest {
+  string artist_id = 1;
+}
+
+message ListArtistsRequest {
+  Pagination pagination = 1;
+}
+
+message ListArtistsResponse {
+  repeated Artist artists = 1;
+  int32 total             = 2;
+}
+
+message SearchArtistsRequest {
+  string query          = 1;
+  Pagination pagination = 2;
+}
+
+message SearchArtistsResponse {
+  repeated Artist artists = 1;
+  int32 total             = 2;
+}
+
+message UploadSongRequest {
+  string title        = 1;
+  string artist_id    = 2;
+  string album_id     = 3;
+  int32 duration_s    = 4;
+  string genre        = 5;
+  string uploader_id  = 6;
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -86,4 +157,15 @@ service MusicService {
   rpc GetAlbum(GetAlbumRequest) returns (Album);
   // endpoint 11
   rpc ListAlbums(ListAlbumsRequest) returns (ListAlbumsResponse);
+  rpc CreateSong(CreateSongRequest) returns (Song);
+  rpc UpdateSong(UpdateSongRequest) returns (Song);
+  rpc DeleteSong(DeleteSongRequest) returns (DeleteSongResponse);
+
+  rpc CreateAlbum(CreateAlbumRequest) returns (Album);
+
+  rpc GetArtist(GetArtistRequest) returns (Artist);
+  rpc ListArtists(ListArtistsRequest) returns (ListArtistsResponse);
+  rpc SearchArtists(SearchArtistsRequest) returns (SearchArtistsResponse);
+
+  rpc UploadSong(UploadSongRequest) returns (Song);
 }
