@@ -1,68 +1,63 @@
-import type { Playlist, PlaylistCreateInput, PlaylistUpdateInput } from '@/types'
-import { MOCK_PLAYLISTS } from '@/lib/mockData'
+import type { Playlist, PlaylistCreateInput } from '@/types'
+import axiosInstance from '@/services/api'
 
-let _playlists: Playlist[] = MOCK_PLAYLISTS.map((p) => ({ ...p }))
+interface ApiPlaylist {
+  id: string
+  user_id: string
+  name: string
+  description: string
+  created_at: number
+  updated_at: number
+}
+
+function toPlaylist(p: ApiPlaylist): Playlist {
+  return {
+    id: p.id,
+    name: p.name,
+    description: p.description ?? '',
+    coverUrl: '',
+    trackIds: [],
+    tracks: [],
+    ownerId: p.user_id,
+    isPublic: false,
+    followerCount: 0,
+    createdAt: new Date(p.created_at * 1000).toISOString(),
+    updatedAt: new Date(p.updated_at * 1000).toISOString(),
+  }
+}
 
 export const PlaylistService = {
   async getUserPlaylists(): Promise<Playlist[]> {
-    return _playlists
+    try {
+      const { data } = await axiosInstance.get<{ playlists: ApiPlaylist[]; total: number }>(
+        '/api/v1/playlists',
+        { params: { limit: 50 } }
+      )
+      return (data.playlists ?? []).map(toPlaylist)
+    } catch {
+      return []
+    }
   },
 
   async getPlaylist(id: string): Promise<Playlist> {
-    const playlist = _playlists.find((p) => p.id === id)
-    if (playlist) return playlist
-    throw new Error(`Playlist "${id}" not found`)
+    const { data } = await axiosInstance.get<ApiPlaylist>(`/api/v1/playlists/${id}`)
+    return toPlaylist(data)
   },
 
   async createPlaylist(input: PlaylistCreateInput): Promise<Playlist> {
-    const now = new Date().toISOString()
-    const playlist: Playlist = {
-      id: `playlist-${Date.now()}`,
+    const { data } = await axiosInstance.post<ApiPlaylist>('/api/v1/playlists', {
       name: input.name,
       description: input.description ?? '',
-      coverUrl: input.coverUrl ?? '',
-      trackIds: [],
-      tracks: [],
-      ownerId: 'local-user',
-      isPublic: input.isPublic ?? false,
-      followerCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    }
-    _playlists = [..._playlists, playlist]
-    return playlist
+    })
+    return toPlaylist(data)
   },
 
   async addTrack(playlistId: string, trackId: string): Promise<void> {
-    _playlists = _playlists.map((p) =>
-      p.id === playlistId && !p.trackIds.includes(trackId)
-        ? { ...p, trackIds: [...p.trackIds, trackId] }
-        : p,
-    )
+    await axiosInstance.post(`/api/v1/playlists/${playlistId}/songs`, { song_id: trackId })
   },
 
   async removeTrack(playlistId: string, trackId: string): Promise<void> {
-    _playlists = _playlists.map((p) =>
-      p.id === playlistId
-        ? {
-            ...p,
-            trackIds: p.trackIds.filter((id) => id !== trackId),
-            tracks: (p.tracks ?? []).filter((t) => t.id !== trackId),
-          }
-        : p,
-    )
-  },
-
-  async updatePlaylist(id: string, updates: PlaylistUpdateInput): Promise<Playlist> {
-    const playlist = _playlists.find((p) => p.id === id)
-    if (!playlist) throw new Error(`Playlist "${id}" not found`)
-    const updated = { ...playlist, ...updates, updatedAt: new Date().toISOString() }
-    _playlists = _playlists.map((p) => (p.id === id ? updated : p))
-    return updated
-  },
-
-  async deletePlaylist(id: string): Promise<void> {
-    _playlists = _playlists.filter((p) => p.id !== id)
+    await axiosInstance.delete(`/api/v1/playlists/${playlistId}/songs/${trackId}`)
   },
 }
 
