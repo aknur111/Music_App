@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        VITE_JAMENDO_CLIENT_ID: ${VITE_JAMENDO_CLIENT_ID}
     image: music-app-frontend
     ports:
       - "3001:80"

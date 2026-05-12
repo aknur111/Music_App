@@ -10,6 +10,9 @@ import {
   LayoutDashboard,
   LogOut,
   X,
+  Music,
+  Disc3,
+  Sparkles,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/store/authStore';
@@ -27,16 +30,34 @@ export const TopBar: React.FC = () => {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [hasNotifications] = useState(true);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifsRead, setNotifsRead] = useState(false);
 
   const searchRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click
+  const NOTIFICATIONS = [
+    { id: '1', icon: Music, text: 'Luna Lux released "Electric Soul"', time: '2h ago', unread: true },
+    { id: '2', icon: Sparkles, text: 'Your weekly picks are ready', time: '5h ago', unread: true },
+    { id: '3', icon: Disc3, text: 'New tracks added to Chill Ambient', time: '1d ago', unread: false },
+  ];
+
+  const handleNotifClick = () => {
+    setNotifOpen((v) => {
+      if (!v) setNotifsRead(true);
+      return !v;
+    });
+  };
+
+  // Close panels on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -46,7 +67,8 @@ export const TopBar: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchValue.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
+      navigate(`/tracks?q=${encodeURIComponent(searchValue.trim())}`);
+      setSearchValue('');
     }
   };
 
@@ -134,16 +156,58 @@ export const TopBar: React.FC = () => {
         {/* Right side */}
         <div className="flex items-center gap-3 ml-auto">
           {/* Notifications */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="relative w-8 h-8 flex items-center justify-center rounded-full text-white/40 hover:text-white/90 hover:bg-white/5 transition-colors duration-200"
-          >
-            <Bell className="w-4 h-4" />
-            {hasNotifications && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-violet-500 ring-2 ring-[#06060e]" />
-            )}
-          </motion.button>
+          <div className="relative" ref={notifRef}>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleNotifClick}
+              className="relative w-8 h-8 flex items-center justify-center rounded-full text-white/40 hover:text-white/90 hover:bg-white/5 transition-colors duration-200"
+            >
+              <Bell className="w-4 h-4" />
+              {!notifsRead && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-violet-500 ring-2 ring-[#06060e]" />
+              )}
+            </motion.button>
+
+            <AnimatePresence>
+              {notifOpen && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.93, y: -6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.93, y: -6 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  className="absolute right-0 top-11 w-72 bg-[#13131f] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden z-50"
+                >
+                  <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
+                    <p className="text-sm font-semibold text-white">Notifications</p>
+                    <span className="text-[10px] text-white/30 font-medium uppercase tracking-wide">3 new</span>
+                  </div>
+                  <div className="divide-y divide-white/[0.04]">
+                    {NOTIFICATIONS.map(({ id, icon: Icon, text, time, unread }) => (
+                      <div
+                        key={id}
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.04] transition-colors cursor-pointer"
+                      >
+                        <div className={clsx(
+                          'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5',
+                          unread ? 'bg-violet-500/20' : 'bg-white/[0.05]'
+                        )}>
+                          <Icon className={clsx('w-4 h-4', unread ? 'text-violet-400' : 'text-white/30')} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-white/80 leading-relaxed">{text}</p>
+                          <p className="text-[10px] text-white/30 mt-0.5">{time}</p>
+                        </div>
+                        {unread && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0 mt-2" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Avatar + dropdown */}
           <div className="relative" ref={dropdownRef}>

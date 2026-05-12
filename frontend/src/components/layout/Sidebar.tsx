@@ -27,7 +27,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', icon: Home, path: '/' },
+  { label: 'Home', icon: Home, path: '/home' },
   { label: 'Discover', icon: Compass, path: '/discover' },
   { label: 'Tracks', icon: Music, path: '/tracks' },
   { label: 'Artists', icon: Mic2, path: '/artists' },
@@ -118,9 +118,8 @@ export const Sidebar: React.FC = () => {
       {/* Navigation */}
       <nav className="flex flex-col gap-0.5 px-2 pt-4 flex-shrink-0">
         {NAV_ITEMS.map(({ label, icon: Icon, path }) => {
-          const isActive = path === '/'
-            ? location.pathname === '/'
-            : location.pathname.startsWith(path);
+          const isActive = location.pathname === path ||
+            (path.length > 1 && location.pathname.startsWith(path + '/'));
 
           return (
             <NavLink key={path} to={path}>
