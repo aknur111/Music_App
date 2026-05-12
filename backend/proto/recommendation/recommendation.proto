@@ -23,6 +23,7 @@ message TrackProto {
   double instrumentalness  = 14;
   double loudness          = 15;
   double speechiness       = 16;
+  string preview_url       = 17;
 }
 
 message MoodRequest {

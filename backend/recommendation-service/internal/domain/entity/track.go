@@ -17,6 +17,7 @@ type Track struct {
 	Instrumentalness float64
 	Loudness         float64
 	Speechiness      float64
+	PreviewURL       string
 }
 
 // Vector returns the normalised 4D feature vector [valence, energy, danceability, tempo_normalised]
