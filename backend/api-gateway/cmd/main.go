@@ -53,9 +53,8 @@ func main() {
 	defer recommConn.Close()
 
 	recommClient := client.NewRecommendationClient(recommConn)
-
-	_ = musicConn
-	_ = playlistConn
+	musicClient := client.NewMusicClient(musicConn)
+	playlistClient := client.NewPlaylistClient(playlistConn)
 
 	authClient := authpb.NewAuthServiceClient(authConn)
 
@@ -87,6 +86,18 @@ func main() {
 			_, err := authClient.Logout(ctx, &authpb.LogoutRequest{AccessToken: token})
 			return err
 		},
+
+		GetSong:    musicClient.GetSong,
+		ListSongs:  musicClient.ListSongs,
+		SearchSongs: musicClient.SearchSongs,
+		GetAlbum:   musicClient.GetAlbum,
+		ListAlbums: musicClient.ListAlbums,
+
+		CreatePlaylist: playlistClient.CreatePlaylist,
+		GetPlaylist:    playlistClient.GetPlaylist,
+		ListPlaylists:  playlistClient.ListPlaylists,
+		AddSong:        playlistClient.AddSong,
+		RemoveSong:     playlistClient.RemoveSong,
 
 		GetRecommendationsByMood:   recommClient.GetByMood,
 		GetMoodRadio:               recommClient.GetMoodRadio,
