@@ -19,26 +19,26 @@ import (
 // CSV column indices (0-based).
 // Col 0 is the unnamed row-number index exported by pandas — skipped.
 const (
-	colSpotifyID        = 1
-	colArtists          = 2
-	colAlbumName        = 3
-	colTrackName        = 4
-	colPopularity       = 5
-	colDurationMS       = 6
+	colSpotifyID  = 1
+	colArtists    = 2
+	colAlbumName  = 3
+	colTrackName  = 4
+	colPopularity = 5
+	colDurationMS = 6
 	// col 7 explicit   — skipped
-	colDanceability     = 8
-	colEnergy           = 9
+	colDanceability = 8
+	colEnergy       = 9
 	// col 10 key       — skipped
-	colLoudness         = 11
+	colLoudness = 11
 	// col 12 mode      — skipped
 	colSpeechiness      = 13
 	colAcousticness     = 14
 	colInstrumentalness = 15
 	// col 16 liveness  — skipped
-	colValence          = 17
-	colTempo            = 18
+	colValence = 17
+	colTempo   = 18
 	// col 19 time_sig  — skipped
-	colGenre            = 20
+	colGenre = 20
 )
 
 // csvPaths lists candidate locations for the CSV, tried in order.
