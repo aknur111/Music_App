@@ -46,6 +46,14 @@ func main() {
 	}
 	defer playlistConn.Close()
 
+	recommConn, err := client.NewGRPCConn(cfg.RecommendationServiceAddr)
+	if err != nil {
+		logger.Fatal("recommendation-service connect", zap.Error(err))
+	}
+	defer recommConn.Close()
+
+	recommClient := client.NewRecommendationClient(recommConn)
+
 	_ = musicConn
 	_ = playlistConn
 
@@ -79,6 +87,12 @@ func main() {
 			_, err := authClient.Logout(ctx, &authpb.LogoutRequest{AccessToken: token})
 			return err
 		},
+
+		GetRecommendationsByMood:   recommClient.GetByMood,
+		GetMoodRadio:               recommClient.GetMoodRadio,
+		GetSimilarTracks:           recommClient.GetSimilar,
+		GetPersonalRecommendations: recommClient.GetPersonal,
+		RecordPlayback:             recommClient.RecordPlayback,
 
 		RefreshToken: func(ctx context.Context, refreshToken string) (string, string, int64, error) {
 			resp, err := authClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{
