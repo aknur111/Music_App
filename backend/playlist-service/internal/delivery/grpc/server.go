@@ -109,17 +109,17 @@ func (s *Server) RemoveSongFromPlaylist(ctx context.Context, req *pb.RemoveSongR
 	return &pb.RemoveSongResponse{Success: true}, nil
 }
 
-//func (s *Server) AddCollaborator(ctx context.Context, req *pb.AddCollaboratorRequest) (*pb.AddCollaboratorResponse, error) {
-//	err := s.uc.AddCollaborator(ctx, req.PlaylistId, req.OwnerId, req.CollaboratorId)
-//	if err != nil {
-//		if err == usecase.ErrNotFound {
-//			return nil, status.Error(codes.NotFound, "playlist not found")
-//		}
-//		if err == usecase.ErrForbidden {
-//			return nil, status.Error(codes.PermissionDenied, "only the owner can add collaborators")
-//		}
-//		return nil, status.Error(codes.Internal, err.Error())
-//	}
-//
-//	return &pb.AddCollaboratorResponse{Success: true}, nil
-//}
+func (s *Server) AddCollaborator(ctx context.Context, req *pb.AddCollaboratorRequest) (*pb.AddCollaboratorResponse, error) {
+	err := s.uc.AddCollaborator(ctx, req.PlaylistId, req.OwnerId, req.CollaboratorId)
+	if err != nil {
+		if err == usecase.ErrNotFound {
+			return nil, status.Error(codes.NotFound, "playlist not found")
+		}
+		if err == usecase.ErrForbidden {
+			return nil, status.Error(codes.PermissionDenied, "only the owner can add collaborators")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.AddCollaboratorResponse{Success: true}, nil
+}
