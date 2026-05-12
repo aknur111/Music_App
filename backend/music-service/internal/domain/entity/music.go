@@ -26,4 +26,6 @@ type Song struct {
 	Genre      string
 	SearchVec  string
 	CreatedAt  time.Time
+	UploaderID string
+	UpdatedAt  time.Time
 }

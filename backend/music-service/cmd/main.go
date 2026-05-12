@@ -23,6 +23,7 @@ import (
 	pb "github.com/music-app/music-service/gen/music"
 	"github.com/music-app/music-service/internal/config"
 	deliveryGRPC "github.com/music-app/music-service/internal/delivery/grpc"
+	deliveryNATS "github.com/music-app/music-service/internal/delivery/nats"
 	infraPG "github.com/music-app/music-service/internal/infrastructure/postgres"
 	repoPG "github.com/music-app/music-service/internal/repository/postgres"
 	repoRedis "github.com/music-app/music-service/internal/repository/redis"
@@ -57,11 +58,26 @@ func main() {
 	}
 	defer nc.Close()
 
+	js, err := nc.JetStream()
+	if err != nil {
+		logger.Fatal("jetstream", zap.Error(err))
+	}
+
 	songRepo := repoPG.NewSongRepository(db)
 	albumRepo := repoPG.NewAlbumRepository(db)
+	artistRepo := repoPG.NewArtistRepository(db)
+
 	cache := repoRedis.NewSongCache(redisClient)
 
-	uc := usecase.NewMusicUsecase(songRepo, albumRepo, cache)
+	publisher := deliveryNATS.NewPublisher(js)
+
+	uc := usecase.NewMusicUsecase(
+		songRepo,
+		albumRepo,
+		artistRepo,
+		cache,
+		publisher,
+	)
 
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
