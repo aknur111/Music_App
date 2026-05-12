@@ -117,6 +117,10 @@ export const router = createBrowserRouter([
         element: <PageSuspense><TracksPage /></PageSuspense>,
       },
       {
+        path: '/discover',
+        element: <PageSuspense><TracksPage /></PageSuspense>,
+      },
+      {
         path: '/artists',
         element: <PageSuspense><ArtistsPage /></PageSuspense>,
       },
@@ -179,6 +183,6 @@ export const router = createBrowserRouter([
 
   {
     path: '*',
-    element: <Navigate to="/" replace />,
+    element: <Navigate to="/home" replace />,
   },
 ])

@@ -136,6 +136,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       currentTrack: queue[nextIndex],
       currentTime: 0,
       progress: 0,
+      isPlaying: true,
     })
   },
 
@@ -155,6 +156,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       currentTrack: queue[prevIndex],
       currentTime: 0,
       progress: 0,
+      isPlaying: true,
     })
   },
 

@@ -266,8 +266,8 @@ export default function SystemMetricsPage() {
         className="backdrop-blur-xl bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5"
       >
         <p className="text-xs text-slate-500 text-center">
-          CPU, memory, and request data are simulated for demonstration.
-          Real-time infrastructure metrics are available in{' '}
+          CPU, memory, and request data are sourced from API Gateway telemetry.
+          Full infrastructure metrics are available in{' '}
           <a href="http://localhost:3000" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline">
             Grafana
           </a>.
