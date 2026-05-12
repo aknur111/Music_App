@@ -8,5 +8,6 @@ use (
 	./music-service
 	./notification-service
 	./playlist-service
+	./recommendation-service
 	./tests/integration
 )

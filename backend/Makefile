@@ -1,6 +1,6 @@
-.PHONY: proto up down test test-unit test-integration migrate lint tidy fmt vet build mocks help
+.PHONY: proto proto-recommendation up down test test-unit test-integration migrate lint tidy fmt vet build mocks seed-recommendations help
 
-SERVICES := auth-service music-service playlist-service notification-service api-gateway
+SERVICES := auth-service music-service playlist-service notification-service recommendation-service api-gateway
 PROTO_DIR := proto
 GOPATH_BIN := $(shell go env GOPATH)/bin
 export PATH := $(GOPATH_BIN):$(PATH)
@@ -36,7 +36,19 @@ proto:
 		--go-grpc_opt=paths=source_relative \
 		-I $(PROTO_DIR) \
 		$(PROTO_DIR)/notification/notification.proto
+	@$(MAKE) proto-recommendation
 	@echo "Done."
+
+proto-recommendation:
+	@echo "Generating recommendation protobuf stubs..."
+	@mkdir -p recommendation-service/gen/recommendation
+	protoc \
+		--go_out=recommendation-service/gen \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=recommendation-service/gen \
+		--go-grpc_opt=paths=source_relative \
+		-I $(PROTO_DIR) \
+		$(PROTO_DIR)/recommendation/recommendation.proto
 
 up:
 	docker compose up -d --build
@@ -45,13 +57,13 @@ down:
 	docker compose down -v
 
 infra-up:
-	docker compose up -d postgres-auth postgres-music postgres-playlist postgres-notification redis nats jaeger prometheus loki grafana
+	docker compose up -d postgres-auth postgres-music postgres-playlist postgres-notification postgres-recommendation redis nats jaeger prometheus loki grafana
 
 infra-down:
-	docker compose stop postgres-auth postgres-music postgres-playlist postgres-notification redis nats jaeger prometheus loki grafana
+	docker compose stop postgres-auth postgres-music postgres-playlist postgres-notification postgres-recommendation redis nats jaeger prometheus loki grafana
 
 migrate-up:
-	@for svc in auth-service music-service playlist-service notification-service; do \
+	@for svc in auth-service music-service playlist-service notification-service recommendation-service; do \
 		echo "Running migrations for $$svc..."; \
 		(cd $$svc && go run ./cmd/... -migrate-only) || true; \
 	done
@@ -75,6 +87,7 @@ test-integration:
 	(cd tests/integration && go test ./... -v -count=1 -tags=integration)
 	@echo "Running per-service integration tests..."
 	(cd notification-service && go test -tags=integration -v -count=1 ./...)
+	(cd recommendation-service && go test -tags=integration -v -count=1 ./...)
 
 test-cover:
 	@for svc in $(SERVICES); do \
@@ -111,6 +124,10 @@ build:
 		echo "Building $$svc..."; \
 		(cd $$svc && mkdir -p bin && go build -o bin/$$svc ./cmd/...) || exit 1; \
 	done
+
+seed-recommendations:
+	@echo "Seeding recommendation-service tracks from CSV..."
+	(cd recommendation-service && go run ./cmd/seed/...)
 
 mocks:
 	@echo "Generating mocks..."
