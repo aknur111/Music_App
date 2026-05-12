@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Play, Sparkles, TrendingUp, Clock } from 'lucide-react'
+import { Play, Sparkles, TrendingUp, Clock, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { MusicService } from '@/services'
 import { RecommendationService } from '@/services/recommendation.service'
@@ -38,24 +38,25 @@ function getGreeting() {
 
 export default function HomePage() {
   const navigate = useNavigate()
-  const { playTrack, addToQueue } = usePlayerStore()
+  const { playTrack } = usePlayerStore()
 
-  const [tracks, setTracks] = useState<Track[]>([])
+  const [trendingTracks, setTrendingTracks] = useState<Track[]>([])
   const [albums, setAlbums] = useState<Album[]>([])
   const [artists, setArtists] = useState<Artist[]>([])
   const [moods, setMoods] = useState<MoodMeta[]>([])
   const [personalTracks, setPersonalTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
+  const [ratedTracks, setRatedTracks] = useState<Record<string, number>>({})
 
   useEffect(() => {
     Promise.all([
-      MusicService.getTracks(1, 20),
+      RecommendationService.getTrendingTracks(6).catch(() => [] as Track[]),
       MusicService.getAlbums(),
       MusicService.getArtists(),
       RecommendationService.listMoods().catch(() => [] as MoodMeta[]),
       RecommendationService.getPersonalRecommendations(6).catch(() => [] as Track[]),
-    ]).then(([t, al, ar, m, p]) => {
-      setTracks(t)
+    ]).then(([tr, al, ar, m, p]) => {
+      setTrendingTracks(tr)
       setAlbums(al)
       setArtists(ar)
       setMoods(m)
@@ -63,7 +64,14 @@ export default function HomePage() {
     }).finally(() => setLoading(false))
   }, [])
 
-  const topTracks = tracks.slice(0, 6)
+  const handleRate = useCallback(async (trackId: string, rating: number) => {
+    setRatedTracks((prev) => ({ ...prev, [trackId]: rating }))
+    try {
+      await RecommendationService.rateTrack(trackId, rating)
+    } catch {
+      setRatedTracks((prev) => { const n = { ...prev }; delete n[trackId]; return n })
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -87,15 +95,15 @@ export default function HomePage() {
       </motion.section>
 
       {/* Featured track hero */}
-      {topTracks.length > 0 && (
+      {trendingTracks.length > 0 && (
         <motion.section variants={itemVariants}>
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-900/60 to-cyan-900/40 p-8 border border-white/[0.08]">
             <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-transparent pointer-events-none" />
             <div className="relative z-10 flex items-center gap-6">
-              {topTracks[0].coverUrl ? (
+              {trendingTracks[0].coverUrl ? (
                 <img
-                  src={topTracks[0].coverUrl}
-                  alt={topTracks[0].title}
+                  src={trendingTracks[0].coverUrl}
+                  alt={trendingTracks[0].title}
                   className="w-24 h-24 rounded-2xl object-cover shadow-2xl flex-shrink-0"
                 />
               ) : (
@@ -104,15 +112,15 @@ export default function HomePage() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-violet-300 font-semibold mb-1 uppercase tracking-wider">Featured</div>
-                <h2 className="text-2xl font-bold text-white truncate">{topTracks[0].title}</h2>
-                <p className="text-white/60 mt-0.5">{topTracks[0].artist}</p>
-                <p className="text-sm text-white/30 mt-1">{topTracks[0].album}</p>
+                <div className="text-xs text-violet-300 font-semibold mb-1 uppercase tracking-wider">Trending #1</div>
+                <h2 className="text-2xl font-bold text-white truncate">{trendingTracks[0].title}</h2>
+                <p className="text-white/60 mt-0.5">{trendingTracks[0].artist}</p>
+                <p className="text-sm text-white/30 mt-1">{trendingTracks[0].album}</p>
               </div>
               <motion.button
                 whileHover={{ scale: 1.06 }}
                 whileTap={{ scale: 0.94 }}
-                onClick={() => playTrack(topTracks[0], topTracks)}
+                onClick={() => playTrack(trendingTracks[0], trendingTracks)}
                 className="flex-shrink-0 w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-500 flex items-center justify-center shadow-lg shadow-violet-900/50 transition-colors"
               >
                 <Play className="w-6 h-6 fill-white text-white ml-0.5" />
@@ -204,24 +212,18 @@ export default function HomePage() {
       )}
 
       {/* Trending tracks */}
-      {topTracks.length > 0 && (
+      {trendingTracks.length > 0 && (
         <motion.section variants={itemVariants}>
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-4 h-4 text-violet-400" />
             <h2 className="text-lg font-semibold text-white">Trending Now</h2>
-            <button
-              onClick={() => navigate('/tracks')}
-              className="ml-auto text-xs text-violet-400 hover:text-violet-300 transition-colors"
-            >
-              See all →
-            </button>
           </div>
           <div className="space-y-1">
-            {topTracks.map((track, i) => (
+            {trendingTracks.map((track, i) => (
               <motion.div
                 key={track.id}
                 whileHover={{ x: 2 }}
-                onClick={() => playTrack(track, topTracks)}
+                onClick={() => playTrack(track, trendingTracks)}
                 className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group cursor-pointer"
               >
                 <span className="w-5 text-right text-sm text-white/25 font-mono flex-shrink-0">{i + 1}</span>
@@ -237,12 +239,22 @@ export default function HomePage() {
                 <span className="text-xs text-white/25 tabular-nums flex-shrink-0">
                   {formatDuration(track.duration)}
                 </span>
-                <motion.button
-                  onClick={(e) => { e.stopPropagation(); addToQueue(track) }}
-                  className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-full bg-violet-600/80 flex items-center justify-center transition-opacity flex-shrink-0"
-                >
-                  <Play className="w-3 h-3 fill-white text-white ml-0.5" />
-                </motion.button>
+                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity flex-shrink-0">
+                  <motion.button
+                    whileTap={{ scale: 0.85 }}
+                    onClick={(e) => { e.stopPropagation(); handleRate(track.id, 5) }}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${ratedTracks[track.id] === 5 ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-white/30 hover:text-green-400 hover:bg-green-500/10'}`}
+                  >
+                    <ThumbsUp className="w-3.5 h-3.5" />
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.85 }}
+                    onClick={(e) => { e.stopPropagation(); handleRate(track.id, 1) }}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${ratedTracks[track.id] === 1 ? 'bg-red-500/20 text-red-400' : 'bg-white/5 text-white/30 hover:text-red-400 hover:bg-red-500/10'}`}
+                  >
+                    <ThumbsDown className="w-3.5 h-3.5" />
+                  </motion.button>
+                </div>
               </motion.div>
             ))}
           </div>

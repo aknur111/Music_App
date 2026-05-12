@@ -58,3 +58,20 @@ func (c *PlaylistClient) RemoveSong(ctx context.Context, playlistID, songID, use
 	})
 	return err
 }
+
+func (c *PlaylistClient) UpdatePlaylist(ctx context.Context, playlistID, userID, name, description string) (interface{}, error) {
+	return c.grpc.UpdatePlaylist(ctx, &playlistpb.UpdatePlaylistRequest{
+		PlaylistId:  playlistID,
+		UserId:      userID,
+		Name:        name,
+		Description: description,
+	})
+}
+
+func (c *PlaylistClient) DeletePlaylist(ctx context.Context, playlistID, userID string) error {
+	_, err := c.grpc.DeletePlaylist(ctx, &playlistpb.DeletePlaylistRequest{
+		PlaylistId: playlistID,
+		UserId:     userID,
+	})
+	return err
+}

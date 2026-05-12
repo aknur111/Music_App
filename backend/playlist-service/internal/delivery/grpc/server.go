@@ -103,3 +103,32 @@ func (s *Server) RemoveSongFromPlaylist(ctx context.Context, req *pb.RemoveSongR
 	}
 	return &pb.RemoveSongResponse{Success: true}, nil
 }
+
+func (s *Server) UpdatePlaylist(ctx context.Context, req *pb.UpdatePlaylistRequest) (*pb.Playlist, error) {
+	p, err := s.uc.UpdatePlaylist(ctx, req.PlaylistId, req.UserId, req.Name, req.Description)
+	if err != nil {
+		if err == usecase.ErrNotFound {
+			return nil, status.Error(codes.NotFound, "playlist not found")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &pb.Playlist{
+		Id:          p.ID,
+		UserId:      p.UserID,
+		Name:        p.Name,
+		Description: p.Description,
+		SongCount:   int32(p.SongCount),
+		CreatedAt:   p.CreatedAt.Unix(),
+		UpdatedAt:   p.UpdatedAt.Unix(),
+	}, nil
+}
+
+func (s *Server) DeletePlaylist(ctx context.Context, req *pb.DeletePlaylistRequest) (*pb.DeletePlaylistResponse, error) {
+	if err := s.uc.DeletePlaylist(ctx, req.PlaylistId, req.UserId); err != nil {
+		if err == usecase.ErrNotFound {
+			return nil, status.Error(codes.NotFound, "playlist not found")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &pb.DeletePlaylistResponse{Success: true}, nil
+}
