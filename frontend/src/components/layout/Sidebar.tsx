@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
-  Compass,
+  Sparkles,
   Music,
   Mic2,
   Disc3,
@@ -28,7 +28,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Home', icon: Home, path: '/home' },
-  { label: 'Discover', icon: Compass, path: '/discover' },
+  { label: 'Discover', icon: Sparkles, path: '/discover/moods' },
   { label: 'Tracks', icon: Music, path: '/tracks' },
   { label: 'Artists', icon: Mic2, path: '/artists' },
   { label: 'Albums', icon: Disc3, path: '/albums' },
