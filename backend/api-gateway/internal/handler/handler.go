@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/music-app/api-gateway/internal/middleware"
 )
 
 type Clients struct {
@@ -30,6 +33,12 @@ type Clients struct {
 	ListPlaylists  func(ctx context.Context, userID string, page, limit int) (interface{}, error)
 	AddSong        func(ctx context.Context, playlistID, songID, userID string) (int, error)
 	RemoveSong     func(ctx context.Context, playlistID, songID, userID string) error
+
+	GetRecommendationsByMood   func(ctx context.Context, mood string, limit int32) (interface{}, error)
+	GetMoodRadio               func(ctx context.Context, mood string) (interface{}, error)
+	GetSimilarTracks           func(ctx context.Context, trackID string, limit int32) (interface{}, error)
+	GetPersonalRecommendations func(ctx context.Context, userID string, limit int32) (interface{}, error)
+	RecordPlayback             func(ctx context.Context, userID, trackID string) error
 }
 
 func Router(clients *Clients) http.Handler {
@@ -45,6 +54,17 @@ func Router(clients *Clients) http.Handler {
 	r.Post("/api/v1/auth/login", loginHandler(clients))
 	r.Post("/api/v1/auth/refresh", refreshHandler(clients))
 	r.Get("/api/v1/auth/profile", profileHandler(clients))
+
+	authMw := middleware.Auth(clients.ValidateToken)
+	r.Route("/api/v1/recommendations", func(r chi.Router) {
+		r.Use(authMw)
+		r.Get("/moods", listMoodsHandler())
+		r.Get("/moods/{mood}", recommendByMoodHandler(clients))
+		r.Get("/moods/{mood}/radio", moodRadioHandler(clients))
+		r.Get("/similar/{track_id}", similarTracksHandler(clients))
+		r.Get("/personal", personalRecsHandler(clients))
+		r.Post("/playback", recordPlaybackHandler(clients))
+	})
 
 	return r
 }
@@ -214,4 +234,121 @@ func writeJSON(w http.ResponseWriter, code int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// ── Recommendation handlers ───────────────────────────────────────────────────
+
+var moodMeta = []map[string]string{
+	{"key": "happy", "name": "Happy", "emoji": "😊", "description": "Bright and bouncy"},
+	{"key": "sad", "name": "Sad", "emoji": "😔", "description": "Quiet reflection"},
+	{"key": "energetic", "name": "Energetic", "emoji": "⚡", "description": "Pump up the volume"},
+	{"key": "chill", "name": "Chill", "emoji": "🌊", "description": "Calm and easy"},
+	{"key": "focus", "name": "Focus", "emoji": "🎯", "description": "Distraction-free work"},
+	{"key": "workout", "name": "Workout", "emoji": "💪", "description": "High-intensity drive"},
+	{"key": "romantic", "name": "Romantic", "emoji": "💕", "description": "Warm and tender"},
+	{"key": "angry", "name": "Angry", "emoji": "🔥", "description": "Fast and aggressive"},
+}
+
+func listMoodsHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]interface{}{"moods": moodMeta})
+	}
+}
+
+func recommendByMoodHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetRecommendationsByMood == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "recommendations unavailable"})
+			return
+		}
+		mood := chi.URLParam(r, "mood")
+		tracks, err := c.GetRecommendationsByMood(r.Context(), mood, int32(parseLimit(r, 20)))
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"tracks": tracks})
+	}
+}
+
+func moodRadioHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetMoodRadio == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "recommendations unavailable"})
+			return
+		}
+		mood := chi.URLParam(r, "mood")
+		tracks, err := c.GetMoodRadio(r.Context(), mood)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"tracks": tracks})
+	}
+}
+
+func similarTracksHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetSimilarTracks == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "recommendations unavailable"})
+			return
+		}
+		trackID := chi.URLParam(r, "track_id")
+		tracks, err := c.GetSimilarTracks(r.Context(), trackID, int32(parseLimit(r, 20)))
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"tracks": tracks})
+	}
+}
+
+func personalRecsHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetPersonalRecommendations == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "recommendations unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		tracks, err := c.GetPersonalRecommendations(r.Context(), userID, int32(parseLimit(r, 20)))
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"tracks": tracks})
+	}
+}
+
+func recordPlaybackHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.RecordPlayback == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "recommendations unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		var body struct {
+			TrackID string `json:"track_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.TrackID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "track_id is required"})
+			return
+		}
+		if err := c.RecordPlayback(r.Context(), userID, body.TrackID); err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "recorded"})
+	}
+}
+
+func parseLimit(r *http.Request, defaultVal int) int {
+	s := r.URL.Query().Get("limit")
+	if s == "" {
+		return defaultVal
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n <= 0 {
+		return defaultVal
+	}
+	return n
 }
