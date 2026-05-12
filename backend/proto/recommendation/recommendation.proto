@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package recommendation;
+
+option go_package = "github.com/music-app/recommendation-service/gen/recommendation;recommendation";
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+
+message TrackProto {
+  string id                = 1;
+  string spotify_id        = 2;
+  string name              = 3;
+  string artists           = 4;
+  string album             = 5;
+  string genre             = 6;
+  int32  duration_ms       = 7;
+  int32  popularity        = 8;
+  double valence           = 9;
+  double energy            = 10;
+  double danceability      = 11;
+  double tempo             = 12;
+  double acousticness      = 13;
+  double instrumentalness  = 14;
+  double loudness          = 15;
+  double speechiness       = 16;
+}
+
+message MoodRequest {
+  string mood  = 1;  // "happy" | "sad" | "energetic" | "chill" | "focus" | "workout" | "romantic" | "angry"
+  int32  limit = 2;  // max results, default 20
+}
+
+message SimilarRequest {
+  string track_id = 1;
+  int32  limit    = 2;
+}
+
+message PersonalRequest {
+  string user_id = 1;
+  int32  limit   = 2;
+}
+
+message MoodRadioRequest {
+  string mood = 1;
+}
+
+message PlaybackRequest {
+  string user_id  = 1;
+  string track_id = 2;
+}
+
+message TracksResponse {
+  repeated TrackProto tracks = 1;
+}
+
+message PlaybackResponse {
+  bool success = 1;
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+
+service RecommendationService {
+  // endpoint 18 — mood-based recommendations (top-100 cached in Redis, 1h TTL)
+  rpc GetRecommendationsByMood(MoodRequest) returns (TracksResponse);
+  // endpoint 19 — tracks similar to a given track by cosine similarity
+  rpc GetSimilarTracks(SimilarRequest) returns (TracksResponse);
+  // endpoint 20 — personalised picks derived from user taste profile
+  rpc GetPersonalRecommendations(PersonalRequest) returns (TracksResponse);
+  // endpoint 21 — 30-track playlist with warm-up / peak / cool-down arc
+  rpc GetMoodRadio(MoodRadioRequest) returns (TracksResponse);
+  // endpoint 22 — record a play event and update weighted taste profile
+  rpc RecordPlayback(PlaybackRequest) returns (PlaybackResponse);
+}

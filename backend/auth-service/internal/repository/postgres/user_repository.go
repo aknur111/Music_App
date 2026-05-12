@@ -20,12 +20,15 @@ func NewUserRepository(db *pgxpool.Pool) repository.UserRepository {
 }
 
 func (r *userRepository) Create(ctx context.Context, u *entity.User) error {
+	if u.Role == "" {
+		u.Role = "user"
+	}
 	_, err := r.db.Exec(ctx,
 		`INSERT INTO users
-		   (id, name, email, password_hash, email_verified,
+		   (id, name, email, password_hash, role, email_verified,
 		    email_verify_token, email_verify_expiry, created_at, updated_at)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-		u.ID, u.Name, u.Email, u.PasswordHash, u.EmailVerified,
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+		u.ID, u.Name, u.Email, u.PasswordHash, u.Role, u.EmailVerified,
 		u.EmailVerifyToken, u.EmailVerifyExpiry, u.CreatedAt, u.UpdatedAt,
 	)
 	return err
@@ -33,7 +36,7 @@ func (r *userRepository) Create(ctx context.Context, u *entity.User) error {
 
 func (r *userRepository) FindByID(ctx context.Context, id string) (*entity.User, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, name, email, password_hash, email_verified,
+		`SELECT id, name, email, password_hash, COALESCE(role, 'user'), email_verified,
 		        email_verify_token, email_verify_expiry,
 		        password_reset_token, password_reset_expiry,
 		        created_at, updated_at
@@ -44,7 +47,7 @@ func (r *userRepository) FindByID(ctx context.Context, id string) (*entity.User,
 
 func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, name, email, password_hash, email_verified,
+		`SELECT id, name, email, password_hash, COALESCE(role, 'user'), email_verified,
 		        email_verify_token, email_verify_expiry,
 		        password_reset_token, password_reset_expiry,
 		        created_at, updated_at
@@ -55,7 +58,7 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entity
 
 func (r *userRepository) FindByEmailVerifyToken(ctx context.Context, token string) (*entity.User, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, name, email, password_hash, email_verified,
+		`SELECT id, name, email, password_hash, COALESCE(role, 'user'), email_verified,
 		        email_verify_token, email_verify_expiry,
 		        password_reset_token, password_reset_expiry,
 		        created_at, updated_at
@@ -66,7 +69,7 @@ func (r *userRepository) FindByEmailVerifyToken(ctx context.Context, token strin
 
 func (r *userRepository) FindByPasswordResetToken(ctx context.Context, token string) (*entity.User, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, name, email, password_hash, email_verified,
+		`SELECT id, name, email, password_hash, COALESCE(role, 'user'), email_verified,
 		        email_verify_token, email_verify_expiry,
 		        password_reset_token, password_reset_expiry,
 		        created_at, updated_at
@@ -100,7 +103,7 @@ func (r *userRepository) SoftDelete(ctx context.Context, id string) error {
 func scanUser(row pgx.Row) (*entity.User, error) {
 	u := &entity.User{}
 	err := row.Scan(
-		&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.EmailVerified,
+		&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &u.EmailVerified,
 		&u.EmailVerifyToken, &u.EmailVerifyExpiry,
 		&u.PasswordResetToken, &u.PasswordResetExpiry,
 		&u.CreatedAt, &u.UpdatedAt,

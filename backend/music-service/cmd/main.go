@@ -9,6 +9,9 @@ import (
 	"syscall"
 	"time"
 
+	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -20,6 +23,7 @@ import (
 	pb "github.com/music-app/music-service/gen/music"
 	"github.com/music-app/music-service/internal/config"
 	deliveryGRPC "github.com/music-app/music-service/internal/delivery/grpc"
+	deliveryNATS "github.com/music-app/music-service/internal/delivery/nats"
 	infraPG "github.com/music-app/music-service/internal/infrastructure/postgres"
 	repoPG "github.com/music-app/music-service/internal/repository/postgres"
 	repoRedis "github.com/music-app/music-service/internal/repository/redis"
@@ -54,11 +58,26 @@ func main() {
 	}
 	defer nc.Close()
 
+	js, err := nc.JetStream()
+	if err != nil {
+		logger.Fatal("jetstream", zap.Error(err))
+	}
+
 	songRepo := repoPG.NewSongRepository(db)
 	albumRepo := repoPG.NewAlbumRepository(db)
+	artistRepo := repoPG.NewArtistRepository(db)
+
 	cache := repoRedis.NewSongCache(redisClient)
 
-	uc := usecase.NewMusicUsecase(songRepo, albumRepo, cache)
+	publisher := deliveryNATS.NewPublisher(js)
+
+	uc := usecase.NewMusicUsecase(
+		songRepo,
+		albumRepo,
+		artistRepo,
+		cache,
+		publisher,
+	)
 
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
@@ -70,6 +89,15 @@ func main() {
 	if err != nil {
 		logger.Fatal("listen", zap.Error(err))
 	}
+
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		logger.Info("music-service metrics starting", zap.String("port", "9090"))
+		if err := http.ListenAndServe(":9090", mux); err != nil {
+			logger.Error("metrics server", zap.Error(err))
+		}
+	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

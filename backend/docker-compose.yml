@@ -67,6 +67,23 @@ services:
       retries: 20
     restart: unless-stopped
 
+  postgres-recommendation:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${RECOMMENDATION_DB_NAME}
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_recommendation_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${RECOMMENDATION_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     ports:
@@ -115,6 +132,7 @@ services:
       REDIS_PORT: "6379"
       NATS_URL: nats://nats:4222
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@aura.dev}
     depends_on:
       postgres-auth:
         condition: service_healthy
@@ -197,6 +215,31 @@ services:
       - "50054:50054"
     restart: unless-stopped
 
+  recommendation-service:
+    build:
+      context: ./recommendation-service
+      dockerfile: Dockerfile
+    image: backend-recommendation-service
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres-recommendation
+      RECOMMENDATION_DB_PORT: "5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      NATS_URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      postgres-recommendation:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    ports:
+      - "50055:50055"
+    restart: unless-stopped
+
   api-gateway:
     build:
       context: .
@@ -229,7 +272,7 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     volumes:
-      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus:/etc/prometheus:ro
     ports:
       - "9090:9090"
     depends_on:
@@ -257,7 +300,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
     depends_on:
       - prometheus
       - loki
@@ -269,5 +312,6 @@ volumes:
   postgres_music_data:
   postgres_playlist_data:
   postgres_notification_data:
+  postgres_recommendation_data:
   redis_data:
   grafana_data:

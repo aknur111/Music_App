@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Grid3X3, List, SlidersHorizontal, X, Music2, ChevronDown } from 'lucide-react';
 import { MusicService } from '@/services/music.service';
 import { TrackCard } from '@/components/shared/TrackCard';
@@ -21,8 +22,6 @@ const SORT_LABELS: Record<SortOption, string> = {
   az: 'A – Z',
 };
 
-const GENRES = ['All', 'Electronic', 'Indie Rock', 'Ambient', 'Neo-Soul', 'Darkwave', 'Hip-Hop', 'Pop', 'Jazz'];
-
 const PAGE_SIZE = 20;
 
 // ─── Track Grid Card (compact grid tile) ─────────────────────────────────────
@@ -30,9 +29,10 @@ const PAGE_SIZE = 20;
 interface TrackGridTileProps {
   track: Track;
   index: number;
+  queue: Track[];
 }
 
-const TrackGridTile: React.FC<TrackGridTileProps> = ({ track, index }) => {
+const TrackGridTile: React.FC<TrackGridTileProps> = ({ track, index, queue }) => {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const isActive = currentTrack?.id === track.id;
   const [hovered, setHovered] = useState(false);
@@ -46,7 +46,7 @@ const TrackGridTile: React.FC<TrackGridTileProps> = ({ track, index }) => {
       transition={{ delay: index * 0.02, type: 'spring', stiffness: 300, damping: 28 }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
-      onClick={() => isActive ? togglePlay() : playTrack(track)}
+      onClick={() => isActive ? togglePlay() : playTrack(track, queue)}
       className={`group cursor-pointer rounded-2xl p-3 border transition-all duration-200 ${isActive ? 'bg-violet-500/10 border-violet-500/30' : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10'}`}
     >
       <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
@@ -135,29 +135,58 @@ const SortDropdown: React.FC<SortDropdownProps> = ({ value, onChange }) => {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const TracksPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [allTracks, setAllTracks] = useState<Track[]>([]);
   const [displayedTracks, setDisplayedTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
   const [sort, setSort] = useState<SortOption>('popular');
   const [activeFilter, setActiveFilter] = useState<FilterChip>('all');
   const [selectedGenre, setSelectedGenre] = useState('All');
+  const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('list');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  // Sync query from URL params (e.g. when TopBar search navigates here)
+  useEffect(() => {
+    const urlQuery = searchParams.get('q') ?? '';
+    if (urlQuery && urlQuery !== query) {
+      setQuery(urlQuery);
+      setPage(1);
+      setActiveFilter('all');
+    }
+  }, [searchParams]);
+
   // Initial load
   useEffect(() => {
-    MusicService.getTracks(1, 50).then((tracks) => {
+    MusicService.getTracks(1, 200).then((tracks) => {
       setAllTracks(tracks);
       setDisplayedTracks(tracks.slice(0, PAGE_SIZE));
       setHasMore(tracks.length > PAGE_SIZE);
       setLoading(false);
     });
   }, []);
+
+  // Derived genre + artist lists
+  const availableGenres = useMemo(() => {
+    const genres = new Set<string>();
+    allTracks.forEach((t) => { if (t.genre && t.genre !== 'Unknown') genres.add(t.genre); });
+    return ['All', ...Array.from(genres).sort()];
+  }, [allTracks]);
+
+  const uniqueArtists = useMemo(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    allTracks.forEach((t) => {
+      const a = typeof t.artist === 'string' ? t.artist : '';
+      if (a && !seen.has(a)) { seen.add(a); result.push(a); }
+    });
+    return result.sort();
+  }, [allTracks]);
 
   // Sorting helper
   const sortTracks = useCallback((tracks: Track[], s: SortOption): Track[] => {
@@ -171,8 +200,13 @@ const TracksPage: React.FC = () => {
   // Search with debounce
   useEffect(() => {
     if (!query.trim()) {
-      const filtered = selectedGenre === 'All' ? allTracks : allTracks.filter((t) => t.genre === selectedGenre);
-      const sorted = sortTracks(filtered, sort);
+      let base = allTracks;
+      if (activeFilter === 'genre' && selectedGenre !== 'All') {
+        base = allTracks.filter((t) => t.genre === selectedGenre);
+      } else if (activeFilter === 'artist' && selectedArtist) {
+        base = allTracks.filter((t) => t.artist === selectedArtist);
+      }
+      const sorted = sortTracks(base, sort);
       setDisplayedTracks(sorted.slice(0, page * PAGE_SIZE));
       setHasMore(sorted.length > page * PAGE_SIZE);
       setSearchLoading(false);
@@ -187,11 +221,22 @@ const TracksPage: React.FC = () => {
       setSearchLoading(false);
     }, 350);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query, sort, selectedGenre, allTracks, page, sortTracks]);
+  }, [query, sort, selectedGenre, selectedArtist, activeFilter, allTracks, page, sortTracks]);
 
   const loadMore = () => setPage((p) => p + 1);
 
-  const clearSearch = () => { setQuery(''); setPage(1); };
+  const clearSearch = () => {
+    setQuery('');
+    setSearchParams({});
+    setPage(1);
+  };
+
+  const handleFilterChange = (id: FilterChip) => {
+    setActiveFilter(id);
+    if (id !== 'genre') setSelectedGenre('All');
+    if (id !== 'artist') setSelectedArtist(null);
+    setPage(1);
+  };
 
   const filterChips: { id: FilterChip; label: string }[] = [
     { id: 'all', label: 'All Tracks' },
@@ -276,7 +321,7 @@ const TracksPage: React.FC = () => {
         {filterChips.map((chip) => (
           <button
             key={chip.id}
-            onClick={() => setActiveFilter(chip.id)}
+            onClick={() => handleFilterChange(chip.id)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
               activeFilter === chip.id
                 ? 'bg-violet-600 text-white shadow-lg shadow-violet-900/40'
@@ -288,7 +333,7 @@ const TracksPage: React.FC = () => {
         ))}
       </motion.div>
 
-      {/* Genre pills (shown when By Genre is active) */}
+      {/* Genre pills */}
       <AnimatePresence>
         {activeFilter === 'genre' && (
           <motion.div
@@ -297,7 +342,7 @@ const TracksPage: React.FC = () => {
             exit={{ opacity: 0, height: 0 }}
             className="flex gap-2 flex-wrap overflow-hidden"
           >
-            {GENRES.map((g) => (
+            {availableGenres.map((g) => (
               <button
                 key={g}
                 onClick={() => setSelectedGenre(g)}
@@ -308,6 +353,42 @@ const TracksPage: React.FC = () => {
                 }`}
               >
                 {g}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Artist pills */}
+      <AnimatePresence>
+        {activeFilter === 'artist' && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex gap-2 flex-wrap overflow-hidden max-h-36 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10"
+          >
+            <button
+              onClick={() => setSelectedArtist(null)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                !selectedArtist
+                  ? 'bg-cyan-600/80 text-white'
+                  : 'bg-white/[0.04] text-white/50 hover:text-white hover:bg-white/[0.08] border border-white/[0.06]'
+              }`}
+            >
+              All Artists
+            </button>
+            {uniqueArtists.map((artist) => (
+              <button
+                key={artist}
+                onClick={() => setSelectedArtist(artist)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                  selectedArtist === artist
+                    ? 'bg-cyan-600/80 text-white'
+                    : 'bg-white/[0.04] text-white/50 hover:text-white hover:bg-white/[0.08] border border-white/[0.06]'
+                }`}
+              >
+                {artist}
               </button>
             ))}
           </motion.div>
@@ -356,6 +437,7 @@ const TracksPage: React.FC = () => {
             >
               <TrackCard
                 track={track}
+                queue={displayedTracks}
                 index={idx}
                 showIndex
                 onAddToQueue={(t) => usePlayerStore.getState().addToQueue(t)}
@@ -366,7 +448,7 @@ const TracksPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {displayedTracks.map((track, idx) => (
-            <TrackGridTile key={track.id} track={track} index={idx} />
+            <TrackGridTile key={track.id} track={track} index={idx} queue={displayedTracks} />
           ))}
         </div>
       )}
