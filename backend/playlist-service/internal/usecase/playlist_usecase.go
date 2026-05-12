@@ -25,6 +25,8 @@ type PlaylistUsecase interface {
 	ListUserPlaylists(ctx context.Context, userID string, page, limit int) ([]*entity.Playlist, int, error)
 	AddSongToPlaylist(ctx context.Context, playlistID, songID, userID string) (int, error)
 	RemoveSongFromPlaylist(ctx context.Context, playlistID, songID, userID string) error
+	UpdatePlaylist(ctx context.Context, id, userID, name, description string) (*entity.Playlist, error)
+	DeletePlaylist(ctx context.Context, id, userID string) error
 }
 
 type playlistUsecase struct {
@@ -104,6 +106,35 @@ func (u *playlistUsecase) RemoveSongFromPlaylist(ctx context.Context, playlistID
 		return ErrNotFound
 	}
 	if err := u.repo.RemoveSong(ctx, playlistID, songID, userID); err != nil {
+		return err
+	}
+	_ = u.cache.InvalidateUserPlaylists(ctx, userID)
+	return nil
+}
+
+func (u *playlistUsecase) UpdatePlaylist(ctx context.Context, id, userID, name, description string) (*entity.Playlist, error) {
+	p, err := u.repo.GetByID(ctx, id, userID)
+	if err != nil || p == nil {
+		return nil, ErrNotFound
+	}
+	if name != "" {
+		p.Name = name
+	}
+	p.Description = description
+	p.UpdatedAt = time.Now().UTC()
+	if err := u.repo.Update(ctx, p); err != nil {
+		return nil, err
+	}
+	_ = u.cache.InvalidateUserPlaylists(ctx, userID)
+	return p, nil
+}
+
+func (u *playlistUsecase) DeletePlaylist(ctx context.Context, id, userID string) error {
+	p, err := u.repo.GetByID(ctx, id, userID)
+	if err != nil || p == nil {
+		return ErrNotFound
+	}
+	if err := u.repo.Delete(ctx, id, userID); err != nil {
 		return err
 	}
 	_ = u.cache.InvalidateUserPlaylists(ctx, userID)

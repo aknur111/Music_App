@@ -98,12 +98,16 @@ func main() {
 		ListPlaylists:  playlistClient.ListPlaylists,
 		AddSong:        playlistClient.AddSong,
 		RemoveSong:     playlistClient.RemoveSong,
+		UpdatePlaylist: playlistClient.UpdatePlaylist,
+		DeletePlaylist: playlistClient.DeletePlaylist,
 
 		GetRecommendationsByMood:   recommClient.GetByMood,
 		GetMoodRadio:               recommClient.GetMoodRadio,
 		GetSimilarTracks:           recommClient.GetSimilar,
 		GetPersonalRecommendations: recommClient.GetPersonal,
 		RecordPlayback:             recommClient.RecordPlayback,
+		GetTrendingTracks:          recommClient.GetTrending,
+		RateTrack:                  recommClient.RateTrack,
 
 		RefreshToken: func(ctx context.Context, refreshToken string) (string, string, int64, error) {
 			resp, err := authClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{

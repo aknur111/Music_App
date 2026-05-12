@@ -15,6 +15,8 @@ type PlaylistRepository interface {
 	AddSong(ctx context.Context, ps *entity.PlaylistSong) (int, error)
 	RemoveSong(ctx context.Context, playlistID, songID, userID string) error
 	GetSongs(ctx context.Context, playlistID string) ([]*entity.PlaylistSong, error)
+	Update(ctx context.Context, p *entity.Playlist) error
+	Delete(ctx context.Context, id, userID string) error
 }
 
 type PlaylistCache interface {

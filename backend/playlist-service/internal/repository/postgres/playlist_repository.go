@@ -127,6 +127,21 @@ func (r *playlistRepository) RemoveSong(ctx context.Context, playlistID, songID,
 	return tx.Commit(ctx)
 }
 
+func (r *playlistRepository) Update(ctx context.Context, p *entity.Playlist) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE playlists SET name=$1, description=$2, updated_at=$3 WHERE id=$4 AND user_id=$5`,
+		p.Name, p.Description, p.UpdatedAt, p.ID, p.UserID,
+	)
+	return err
+}
+
+func (r *playlistRepository) Delete(ctx context.Context, id, userID string) error {
+	_, err := r.db.Exec(ctx,
+		`DELETE FROM playlists WHERE id=$1 AND user_id=$2`, id, userID,
+	)
+	return err
+}
+
 func (r *playlistRepository) GetSongs(ctx context.Context, playlistID string) ([]*entity.PlaylistSong, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT playlist_id, song_id, position, added_at FROM playlist_songs

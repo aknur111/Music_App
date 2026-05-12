@@ -59,6 +59,18 @@ export const PlaylistService = {
   async removeTrack(playlistId: string, trackId: string): Promise<void> {
     await axiosInstance.delete(`/api/v1/playlists/${playlistId}/songs/${trackId}`)
   },
+
+  async updatePlaylist(id: string, name: string, description: string): Promise<Playlist> {
+    const { data } = await axiosInstance.put<ApiPlaylist>(`/api/v1/playlists/${id}`, {
+      name,
+      description,
+    })
+    return toPlaylist(data)
+  },
+
+  async deletePlaylist(id: string): Promise<void> {
+    await axiosInstance.delete(`/api/v1/playlists/${id}`)
+  },
 }
 
 export default PlaylistService

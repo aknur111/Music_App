@@ -39,6 +39,11 @@ type Clients struct {
 	GetSimilarTracks           func(ctx context.Context, trackID string, limit int32) (interface{}, error)
 	GetPersonalRecommendations func(ctx context.Context, userID string, limit int32) (interface{}, error)
 	RecordPlayback             func(ctx context.Context, userID, trackID string) error
+	GetTrendingTracks          func(ctx context.Context, limit int32) (interface{}, error)
+	RateTrack                  func(ctx context.Context, userID, trackID string, rating int32) error
+
+	UpdatePlaylist func(ctx context.Context, playlistID, userID, name, description string) (interface{}, error)
+	DeletePlaylist func(ctx context.Context, playlistID, userID string) error
 }
 
 func Router(clients *Clients) http.Handler {
@@ -68,6 +73,8 @@ func Router(clients *Clients) http.Handler {
 	r.With(authMw).Post("/api/v1/playlists", createPlaylistHandler(clients))
 	r.With(authMw).Get("/api/v1/playlists", listPlaylistsHandler(clients))
 	r.With(authMw).Get("/api/v1/playlists/{playlist_id}", getPlaylistHandler(clients))
+	r.With(authMw).Put("/api/v1/playlists/{playlist_id}", updatePlaylistHandler(clients))
+	r.With(authMw).Delete("/api/v1/playlists/{playlist_id}", deletePlaylistHandler(clients))
 	r.With(authMw).Post("/api/v1/playlists/{playlist_id}/songs", addSongHandler(clients))
 	r.With(authMw).Delete("/api/v1/playlists/{playlist_id}/songs/{song_id}", removeSongHandler(clients))
 
@@ -80,6 +87,8 @@ func Router(clients *Clients) http.Handler {
 		r.Get("/similar/{track_id}", similarTracksHandler(clients))
 		r.Get("/personal", personalRecsHandler(clients))
 		r.Post("/playback", recordPlaybackHandler(clients))
+		r.Get("/trending", trendingTracksHandler(clients))
+		r.Post("/rate", rateTrackHandler(clients))
 	})
 
 	return r
@@ -562,5 +571,88 @@ func removeSongHandler(c *Clients) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusNoContent, nil)
+	}
+}
+
+func updatePlaylistHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.UpdatePlaylist == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "playlist service unavailable"})
+			return
+		}
+		playlistID := chi.URLParam(r, "playlist_id")
+		userID := middleware.GetUserID(r.Context())
+		var body struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
+			return
+		}
+		playlist, err := c.UpdatePlaylist(r.Context(), playlistID, userID, body.Name, body.Description)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, playlist)
+	}
+}
+
+func deletePlaylistHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.DeletePlaylist == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "playlist service unavailable"})
+			return
+		}
+		playlistID := chi.URLParam(r, "playlist_id")
+		userID := middleware.GetUserID(r.Context())
+		if err := c.DeletePlaylist(r.Context(), playlistID, userID); err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusNoContent, nil)
+	}
+}
+
+func trendingTracksHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetTrendingTracks == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "recommendations unavailable"})
+			return
+		}
+		tracks, err := c.GetTrendingTracks(r.Context(), int32(parseLimit(r, 20)))
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"tracks": tracks})
+	}
+}
+
+func rateTrackHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.RateTrack == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "recommendations unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		var body struct {
+			TrackID string `json:"track_id"`
+			Rating  int32  `json:"rating"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.TrackID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "track_id is required"})
+			return
+		}
+		if body.Rating < 1 || body.Rating > 5 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "rating must be between 1 and 5"})
+			return
+		}
+		if err := c.RateTrack(r.Context(), userID, body.TrackID, body.Rating); err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "rated"})
 	}
 }

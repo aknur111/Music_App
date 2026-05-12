@@ -114,6 +114,21 @@ export const RecommendationService = {
   async recordPlayback(trackId: string): Promise<void> {
     await post<{ status: string }>('/api/v1/recommendations/playback', { track_id: trackId })
   },
+
+  async getTrendingTracks(limit = 20): Promise<Track[]> {
+    const data = await get<{ tracks: RecommendTrackRaw[] }>(
+      '/api/v1/recommendations/trending',
+      { limit },
+    )
+    return enrichAll(data.tracks ?? [])
+  },
+
+  async rateTrack(trackId: string, rating: number): Promise<void> {
+    await post<{ status: string }>('/api/v1/recommendations/rate', {
+      track_id: trackId,
+      rating,
+    })
+  },
 }
 
 export default RecommendationService

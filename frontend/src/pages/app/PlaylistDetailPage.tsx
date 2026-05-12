@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Play, ArrowLeft, ListMusic, Trash2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Play, ArrowLeft, ListMusic, Trash2, Pencil } from 'lucide-react'
 import { PlaylistService } from '@/services/playlist.service'
 import { TrackCard } from '@/components/shared/TrackCard'
 import { usePlayerStore } from '@/store/playerStore'
@@ -15,12 +15,17 @@ export default function PlaylistDetailPage() {
   const [playlist, setPlaylist] = useState<Playlist | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!id) return
     setLoading(true)
     PlaylistService.getPlaylist(id)
-      .then(setPlaylist)
+      .then((pl) => { setPlaylist(pl); setEditName(pl.name); setEditDesc(pl.description ?? '') })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [id])
@@ -37,6 +42,30 @@ export default function PlaylistDetailPage() {
           }
         : prev
     )
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!id || !editName.trim()) return
+    setSaving(true)
+    try {
+      const updated = await PlaylistService.updatePlaylist(id, editName.trim(), editDesc.trim())
+      setPlaylist((prev) => prev ? { ...prev, name: updated.name, description: updated.description } : prev)
+      setShowEdit(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!id || !window.confirm('Delete this playlist? This cannot be undone.')) return
+    setDeleting(true)
+    try {
+      await PlaylistService.deletePlaylist(id)
+      navigate('/library')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   if (loading) {
@@ -69,13 +98,36 @@ export default function PlaylistDetailPage() {
       <div className="relative overflow-hidden bg-gradient-to-br from-violet-900/30 to-cyan-900/20 border-b border-white/[0.06]">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d0d1a]/80 pointer-events-none" />
         <div className="relative z-10 p-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+            <div className="flex items-center gap-2">
+              <motion.button
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setShowEdit(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white/50 hover:text-white hover:bg-white/5 transition-all"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {deleting ? 'Deleting…' : 'Delete'}
+              </motion.button>
+            </div>
+          </div>
 
           <div className="flex items-end gap-6">
             <div className="w-36 h-36 rounded-2xl bg-gradient-to-br from-violet-600/30 to-cyan-600/20 flex items-center justify-center border border-white/[0.08] shadow-2xl flex-shrink-0">
@@ -143,6 +195,61 @@ export default function PlaylistDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Edit modal */}
+      <AnimatePresence>
+        {showEdit && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowEdit(false) }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              className="w-96 bg-[#13131f] border border-white/10 rounded-2xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold text-white mb-5">Edit Playlist</h3>
+              <form onSubmit={handleSaveEdit} className="flex flex-col gap-3">
+                <input
+                  autoFocus
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Playlist name"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/60"
+                />
+                <textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  placeholder="Description (optional)"
+                  rows={2}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/60 resize-none"
+                />
+                <div className="flex gap-2 justify-end mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEdit(false)}
+                    className="px-4 py-2 rounded-xl text-sm text-white/50 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!editName.trim() || saving}
+                    className="px-5 py-2 rounded-xl text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50"
+                  >
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
