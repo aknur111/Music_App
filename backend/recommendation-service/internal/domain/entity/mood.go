@@ -1,6 +1,9 @@
 package entity
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Mood is a named emotional state used to drive track recommendations.
 type Mood string
@@ -26,12 +29,22 @@ const (
 // may yield sparse results when combined with the popularity>=30 filter.
 // Adjust valence thresholds empirically if result sets are too small.
 // ParseMood validates a string mood name and returns the typed Mood constant.
+// Comparison is case-insensitive: "Happy", "HAPPY", "happy" all resolve to MoodHappy.
 // Returns an error with the full list of valid values on unknown input.
 func ParseMood(s string) (Mood, error) {
-	if _, ok := MoodVectors[Mood(s)]; ok {
-		return Mood(s), nil
+	normalized := Mood(strings.ToLower(s))
+	if _, ok := MoodVectors[normalized]; ok {
+		return normalized, nil
 	}
 	return "", fmt.Errorf("unknown mood %q: must be one of happy, sad, energetic, chill, focus, workout, romantic, angry", s)
+}
+
+// AllMoods returns all 8 valid mood constants.
+func AllMoods() []Mood {
+	return []Mood{
+		MoodHappy, MoodSad, MoodEnergetic, MoodChill,
+		MoodFocus, MoodWorkout, MoodRomantic, MoodAngry,
+	}
 }
 
 var MoodVectors = map[Mood][4]float64{
