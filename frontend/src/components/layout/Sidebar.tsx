@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
-  Compass,
+  Sparkles,
   Music,
   Mic2,
   Disc3,
@@ -27,8 +27,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', icon: Home, path: '/' },
-  { label: 'Discover', icon: Compass, path: '/discover' },
+  { label: 'Home', icon: Home, path: '/home' },
+  { label: 'Discover', icon: Sparkles, path: '/discover/moods' },
   { label: 'Tracks', icon: Music, path: '/tracks' },
   { label: 'Artists', icon: Mic2, path: '/artists' },
   { label: 'Albums', icon: Disc3, path: '/albums' },
@@ -118,9 +118,8 @@ export const Sidebar: React.FC = () => {
       {/* Navigation */}
       <nav className="flex flex-col gap-0.5 px-2 pt-4 flex-shrink-0">
         {NAV_ITEMS.map(({ label, icon: Icon, path }) => {
-          const isActive = path === '/'
-            ? location.pathname === '/'
-            : location.pathname.startsWith(path);
+          const isActive = location.pathname === path ||
+            (path.length > 1 && location.pathname.startsWith(path + '/'));
 
           return (
             <NavLink key={path} to={path}>

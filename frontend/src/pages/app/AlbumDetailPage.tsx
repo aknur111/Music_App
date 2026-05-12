@@ -1,16 +1,34 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Play, ArrowLeft, Clock } from 'lucide-react'
-import { DEMO_ALBUMS, DEMO_TRACKS } from '@/lib/constants'
+import { MusicService } from '@/services'
 import { formatDuration, formatCount } from '@/lib/utils'
 import { usePlayerStore } from '@/store/playerStore'
+import type { Album } from '@/types'
 
 export default function AlbumDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { playTrack } = usePlayerStore()
-  const album = DEMO_ALBUMS.find((a) => a.id === id)
-  const tracks = DEMO_TRACKS.filter((t) => t.albumId === id)
+  const [album, setAlbum] = useState<Album | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!id) return
+    MusicService.getAlbum(id)
+      .then(setAlbum)
+      .catch(() => setAlbum(null))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center py-24">
+        <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+      </div>
+    )
+  }
 
   if (!album) {
     return (
@@ -23,11 +41,11 @@ export default function AlbumDetailPage() {
     )
   }
 
+  const tracks = album.tracks ?? []
   const totalDuration = tracks.reduce((acc, t) => acc + t.duration, 0)
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-32">
-      {/* Hero */}
       <div className="relative">
         <div
           className="absolute inset-0 h-64 bg-cover bg-center blur-2xl opacity-20"
@@ -52,7 +70,7 @@ export default function AlbumDetailPage() {
               <h1 className="text-3xl font-black text-[#f8fafc] mb-1">{album.title}</h1>
               <p className="text-[#94a3b8]">{album.artist}</p>
               <p className="text-sm text-[#64748b] mt-1">
-                {album.releaseYear} · {album.trackCount} tracks · {formatDuration(totalDuration)}
+                {album.releaseYear} · {tracks.length} tracks · {formatDuration(totalDuration)}
               </p>
               <button
                 onClick={() => tracks.length > 0 && playTrack(tracks[0], tracks)}
@@ -66,7 +84,6 @@ export default function AlbumDetailPage() {
         </div>
       </div>
 
-      {/* Track list */}
       <div className="px-6 mt-4">
         <div className="grid grid-cols-[2rem_1fr_5rem_3rem] gap-4 px-4 text-xs text-[#64748b] font-medium uppercase tracking-wide border-b border-white/8 pb-2 mb-2">
           <span>#</span>
@@ -83,7 +100,10 @@ export default function AlbumDetailPage() {
             <span className="text-sm text-[#64748b] font-mono text-right group-hover:hidden">
               {i + 1}
             </span>
-            <button className="hidden group-hover:flex items-center justify-end" onClick={(e) => { e.stopPropagation(); playTrack(track, tracks) }}>
+            <button
+              className="hidden group-hover:flex items-center justify-end"
+              onClick={(e) => { e.stopPropagation(); playTrack(track, tracks) }}
+            >
               <Play className="w-4 h-4 fill-violet-400 text-violet-400" />
             </button>
             <div>

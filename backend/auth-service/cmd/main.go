@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -36,7 +38,6 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// ── Postgres ──────────────────────────────────────────────────────────────
 	db, err := infraPG.NewPool(ctx, cfg.PostgresDSN)
 	if err != nil {
 		logger.Fatal("postgres connect", zap.Error(err))
@@ -47,14 +48,12 @@ func main() {
 		logger.Fatal("migrations", zap.Error(err))
 	}
 
-	// ── Redis ─────────────────────────────────────────────────────────────────
 	redisClient, err := infraRedis.NewClient(cfg.RedisAddr, cfg.RedisPass, 0)
 	if err != nil {
 		logger.Fatal("redis connect", zap.Error(err))
 	}
 	defer redisClient.Close()
 
-	// ── NATS ──────────────────────────────────────────────────────────────────
 	nc, err := nats.Connect(cfg.NatsURL)
 	if err != nil {
 		logger.Fatal("nats connect", zap.Error(err))
@@ -66,13 +65,11 @@ func main() {
 		logger.Fatal("jetstream context", zap.Error(err))
 	}
 
-	// ensure stream exists
 	_, _ = js.AddStream(&nats.StreamConfig{
 		Name:     "MUSIC_EVENTS",
 		Subjects: []string{"music.>"},
 	})
 
-	// ── Wire dependencies ─────────────────────────────────────────────────────
 	userRepo := repoPG.NewUserRepository(db)
 	tokenRepo := repoPG.NewRefreshTokenRepository(db)
 	blacklist := repoRedis.NewTokenBlacklist(redisClient)
@@ -83,7 +80,6 @@ func main() {
 		cfg.JWTSecret, cfg.AccessTTL, cfg.RefreshTTL,
 	)
 
-	// ── gRPC server ───────────────────────────────────────────────────────────
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 	)
@@ -94,6 +90,15 @@ func main() {
 	if err != nil {
 		logger.Fatal("listen", zap.Error(err))
 	}
+
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		logger.Info("auth-service metrics starting", zap.String("port", "9090"))
+		if err := http.ListenAndServe(":9090", mux); err != nil {
+			logger.Error("metrics server", zap.Error(err))
+		}
+	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

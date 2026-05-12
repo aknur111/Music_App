@@ -6,6 +6,7 @@ type User struct {
 	ID                  string
 	Name                string
 	Email               string
+	Role                string
 	PasswordHash        string
 	EmailVerified       bool
 	EmailVerifyToken    string

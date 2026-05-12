@@ -1,13 +1,18 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { UserCheck, UserPlus } from 'lucide-react'
-import { useState } from 'react'
-import { DEMO_ARTISTS } from '@/lib/constants'
+import { MusicService } from '@/services'
 import { formatCount, cn } from '@/lib/utils'
+import type { Artist } from '@/types'
 
 export default function ArtistsPage() {
-  const [followedIds, setFollowedIds] = useState<Set<string>>(
-    () => new Set(DEMO_ARTISTS.filter((a) => a.isFollowed).map((a) => a.id)),
-  )
+  const [artists, setArtists] = useState<Artist[]>([])
+  const [loading, setLoading] = useState(true)
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    MusicService.getArtists().then(setArtists).finally(() => setLoading(false))
+  }, [])
 
   const toggle = (id: string) =>
     setFollowedIds((prev) => {
@@ -15,6 +20,14 @@ export default function ArtistsPage() {
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center py-24">
+        <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -25,12 +38,11 @@ export default function ArtistsPage() {
     >
       <h1 className="text-2xl font-bold text-[#f8fafc] mb-6">Artists</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {DEMO_ARTISTS.map((artist) => (
+        {artists.map((artist: Artist) => (
           <div
             key={artist.id}
             className="glass rounded-2xl overflow-hidden hover:bg-white/6 transition-colors cursor-pointer group"
           >
-            {/* Cover banner */}
             <div className="h-24 overflow-hidden">
               <img
                 src={artist.coverUrl ?? artist.avatarUrl}
@@ -39,7 +51,6 @@ export default function ArtistsPage() {
               />
             </div>
             <div className="px-5 pb-5">
-              {/* Avatar */}
               <div className="-mt-8 mb-3">
                 <img
                   src={artist.avatarUrl}
@@ -56,10 +67,7 @@ export default function ArtistsPage() {
                   </p>
                 </div>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggle(artist.id)
-                  }}
+                  onClick={(e) => { e.stopPropagation(); toggle(artist.id) }}
                   className={cn(
                     'flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
                     followedIds.has(artist.id)

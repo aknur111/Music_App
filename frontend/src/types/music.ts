@@ -14,6 +14,16 @@ export interface Track {
   isLiked?: boolean
   createdAt: string
   updatedAt: string
+  // Optional Spotify audio features — populated for recommendation-service tracks
+  spotifyId?: string
+  valence?: number
+  energy?: number
+  danceability?: number
+  tempo?: number
+  acousticness?: number
+  instrumentalness?: number
+  loudness?: number
+  speechiness?: number
 }
 
 export interface Album {

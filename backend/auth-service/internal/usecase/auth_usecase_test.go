@@ -11,7 +11,6 @@ import (
 	"github.com/music-app/auth-service/internal/usecase"
 )
 
-// ── inline mocks ─────────────────────────────────────────────────────────────
 
 type mockUserRepo struct{ mock.Mock }
 
@@ -95,7 +94,6 @@ func newUsecase(users *mockUserRepo, tokens *mockTokenRepo, bl *mockBlacklist, p
 	return usecase.NewAuthUsecase(users, tokens, bl, pub, "test-secret", 15*time.Minute, 168*time.Hour)
 }
 
-// ── Register ──────────────────────────────────────────────────────────────────
 
 func TestRegister_Success(t *testing.T) {
 	users := new(mockUserRepo)
@@ -134,7 +132,6 @@ func TestRegister_EmailTaken(t *testing.T) {
 	assert.ErrorIs(t, err, usecase.ErrEmailTaken)
 }
 
-// ── Login ─────────────────────────────────────────────────────────────────────
 
 func TestLogin_InvalidCredentials(t *testing.T) {
 	users := new(mockUserRepo)
@@ -150,7 +147,6 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 	assert.ErrorIs(t, err, usecase.ErrInvalidCredentials)
 }
 
-// ── VerifyEmail ───────────────────────────────────────────────────────────────
 
 func TestVerifyEmail_Success(t *testing.T) {
 	users := new(mockUserRepo)
@@ -181,7 +177,7 @@ func TestVerifyEmail_ExpiredToken(t *testing.T) {
 	bl := new(mockBlacklist)
 	pub := new(mockPublisher)
 
-	expiry := time.Now().Add(-1 * time.Hour) // already expired
+	expiry := time.Now().Add(-1 * time.Hour)
 	u := &entity.User{
 		ID:                "u1",
 		EmailVerifyToken:  "old-token",
@@ -209,7 +205,6 @@ func TestVerifyEmail_TokenNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, usecase.ErrTokenInvalid)
 }
 
-// ── RequestPasswordReset ──────────────────────────────────────────────────────
 
 func TestRequestPasswordReset_UnknownEmail(t *testing.T) {
 	users := new(mockUserRepo)
@@ -217,7 +212,6 @@ func TestRequestPasswordReset_UnknownEmail(t *testing.T) {
 	bl := new(mockBlacklist)
 	pub := new(mockPublisher)
 
-	// unknown email → no error (prevents enumeration)
 	users.On("FindByEmail", mock.Anything, "nobody@example.com").Return(nil, nil)
 
 	uc := newUsecase(users, tokens, bl, pub)
@@ -245,7 +239,6 @@ func TestRequestPasswordReset_KnownEmail(t *testing.T) {
 	pub.AssertExpectations(t)
 }
 
-// ── ResetPassword ─────────────────────────────────────────────────────────────
 
 func TestResetPassword_Success(t *testing.T) {
 	users := new(mockUserRepo)
@@ -277,7 +270,7 @@ func TestResetPassword_ExpiredToken(t *testing.T) {
 	bl := new(mockBlacklist)
 	pub := new(mockPublisher)
 
-	expiry := time.Now().Add(-5 * time.Minute) // expired
+	expiry := time.Now().Add(-5 * time.Minute)
 	u := &entity.User{
 		ID:                  "u1",
 		PasswordResetToken:  "old-tok",
@@ -291,7 +284,6 @@ func TestResetPassword_ExpiredToken(t *testing.T) {
 	assert.ErrorIs(t, err, usecase.ErrTokenInvalid)
 }
 
-// ── GetProfile ────────────────────────────────────────────────────────────────
 
 func TestGetProfile_Success(t *testing.T) {
 	users := new(mockUserRepo)
@@ -323,7 +315,6 @@ func TestGetProfile_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, usecase.ErrUserNotFound)
 }
 
-// ── ValidateToken ─────────────────────────────────────────────────────────────
 
 func TestValidateToken_BlacklistedToken(t *testing.T) {
 	users := new(mockUserRepo)
@@ -333,11 +324,9 @@ func TestValidateToken_BlacklistedToken(t *testing.T) {
 
 	bl.On("Exists", mock.Anything, mock.Anything).Return(true, nil)
 
-	// build a real signed token using a full login flow
 	users.On("FindByEmail", mock.Anything, mock.Anything).Return(nil, nil)
 
 	uc := newUsecase(users, tokens, bl, pub)
-	// directly try to validate a garbage token → should fail
 	_, _, err := uc.ValidateToken(context.Background(), "not.a.valid.token")
 	assert.ErrorIs(t, err, usecase.ErrTokenInvalid)
 }

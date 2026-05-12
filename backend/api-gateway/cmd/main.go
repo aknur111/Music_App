@@ -28,7 +28,6 @@ func main() {
 
 	cfg := config.Load()
 
-	// ── gRPC connections ──────────────────────────────────────────────────────
 	authConn, err := client.NewGRPCConn(cfg.AuthServiceAddr)
 	if err != nil {
 		logger.Fatal("auth-service connect", zap.Error(err))
@@ -47,14 +46,19 @@ func main() {
 	}
 	defer playlistConn.Close()
 
-	// music/playlist stubs not yet implemented
+	recommConn, err := client.NewGRPCConn(cfg.RecommendationServiceAddr)
+	if err != nil {
+		logger.Fatal("recommendation-service connect", zap.Error(err))
+	}
+	defer recommConn.Close()
+
+	recommClient := client.NewRecommendationClient(recommConn)
+
 	_ = musicConn
 	_ = playlistConn
 
-	// ── Auth gRPC client ──────────────────────────────────────────────────────
 	authClient := authpb.NewAuthServiceClient(authConn)
 
-	// ── Wire handler.Clients ──────────────────────────────────────────────────
 	clients := &handler.Clients{
 		RegisterUser: func(ctx context.Context, name, email, password string) (string, error) {
 			resp, err := authClient.Register(ctx, &authpb.RegisterRequest{
@@ -84,6 +88,12 @@ func main() {
 			return err
 		},
 
+		GetRecommendationsByMood:   recommClient.GetByMood,
+		GetMoodRadio:               recommClient.GetMoodRadio,
+		GetSimilarTracks:           recommClient.GetSimilar,
+		GetPersonalRecommendations: recommClient.GetPersonal,
+		RecordPlayback:             recommClient.RecordPlayback,
+
 		RefreshToken: func(ctx context.Context, refreshToken string) (string, string, int64, error) {
 			resp, err := authClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{
 				RefreshToken: refreshToken,
@@ -105,12 +115,12 @@ func main() {
 		},
 	}
 
-	// ── HTTP router ───────────────────────────────────────────────────────────
 	r := chi.NewRouter()
 	r.Use(middleware.CORS)
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.Logger(logger))
+	r.Use(middleware.Metrics)
 
 	r.Mount("/", handler.Router(clients))
 
