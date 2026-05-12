@@ -5,6 +5,8 @@ import "net/http"
 var allowedOrigins = map[string]bool{
 	"http://localhost:3000": true,
 	"http://localhost:3001": true,
+	"http://localhost:5173": true,
+	"http://localhost:5174": true,
 }
 
 // CORS adds the necessary headers for browser cross-origin requests and
