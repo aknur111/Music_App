@@ -7,7 +7,9 @@ import {
   Heart,
   ListPlus,
   PlusCircle,
+  Radio,
 } from 'lucide-react';
+import { SimilarTracksModal } from '@/components/shared/SimilarTracksModal';
 import { clsx } from 'clsx';
 import { AudioWaveform } from '@/components/ui/AudioWaveform';
 import { usePlayerStore } from '@/store/playerStore';
@@ -19,6 +21,8 @@ interface TrackCardProps {
   queue?: Track[];
   index?: number;
   showIndex?: boolean;
+  showSimilarButton?: boolean;
+  onPlay?: (track: Track) => void;
   onAddToQueue?: (track: Track) => void;
   onAddToPlaylist?: (track: Track) => void;
   onLike?: (track: Track) => void;
@@ -36,6 +40,8 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   queue,
   index,
   showIndex = false,
+  showSimilarButton = false,
+  onPlay,
   onAddToQueue,
   onAddToPlaylist,
   onLike,
@@ -43,6 +49,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [similarOpen, setSimilarOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayerStore();
@@ -55,10 +62,12 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       togglePlay();
     } else {
       playTrack(track, queue ?? [track]);
+      onPlay?.(track);
     }
   };
 
   return (
+    <>
     <motion.div
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
@@ -179,6 +188,18 @@ export const TrackCard: React.FC<TrackCardProps> = ({
           />
         </motion.button>
 
+        {showSimilarButton && (
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => { e.stopPropagation(); setSimilarOpen(true); }}
+            title="Similar tracks"
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-white/30 hover:text-violet-400 hover:bg-white/10 transition-all duration-200 opacity-0 group-hover:opacity-100"
+          >
+            <Radio className="w-3.5 h-3.5" />
+          </motion.button>
+        )}
+
         <div className="relative">
           <motion.button
             whileHover={{ scale: 1.1 }}
@@ -230,5 +251,14 @@ export const TrackCard: React.FC<TrackCardProps> = ({
         </div>
       </div>
     </motion.div>
+
+    {showSimilarButton && (
+      <SimilarTracksModal
+        trackId={track.id}
+        isOpen={similarOpen}
+        onClose={() => setSimilarOpen(false)}
+      />
+    )}
+    </>
   );
 };
