@@ -12,6 +12,8 @@ message PlaylistSong {
   string artist    = 3;
   int32  position  = 4;
   int32  duration_s = 5;
+  string cover_url  = 6;
+  string audio_url  = 7;
 }
 
 message Playlist {
@@ -53,6 +55,11 @@ message AddSongRequest {
   string playlist_id = 1;
   string song_id     = 2;
   string user_id     = 3;
+  string title       = 4;
+  string artist      = 5;
+  string cover_url   = 6;
+  string audio_url   = 7;
+  int32  duration_s  = 8;
 }
 
 message AddSongResponse {

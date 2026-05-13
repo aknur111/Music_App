@@ -28,6 +28,8 @@ type PlaylistSong struct {
 	Artist        string                 `protobuf:"bytes,3,opt,name=artist,proto3" json:"artist,omitempty"`
 	Position      int32                  `protobuf:"varint,4,opt,name=position,proto3" json:"position,omitempty"`
 	DurationS     int32                  `protobuf:"varint,5,opt,name=duration_s,json=durationS,proto3" json:"duration_s,omitempty"`
+	CoverUrl      string                 `protobuf:"bytes,6,opt,name=cover_url,json=coverUrl,proto3" json:"cover_url,omitempty"`
+	AudioUrl      string                 `protobuf:"bytes,7,opt,name=audio_url,json=audioUrl,proto3" json:"audio_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -95,6 +97,20 @@ func (x *PlaylistSong) GetDurationS() int32 {
 		return x.DurationS
 	}
 	return 0
+}
+
+func (x *PlaylistSong) GetCoverUrl() string {
+	if x != nil {
+		return x.CoverUrl
+	}
+	return ""
+}
+
+func (x *PlaylistSong) GetAudioUrl() string {
+	if x != nil {
+		return x.AudioUrl
+	}
+	return ""
 }
 
 type Playlist struct {
@@ -426,6 +442,11 @@ type AddSongRequest struct {
 	PlaylistId    string                 `protobuf:"bytes,1,opt,name=playlist_id,json=playlistId,proto3" json:"playlist_id,omitempty"`
 	SongId        string                 `protobuf:"bytes,2,opt,name=song_id,json=songId,proto3" json:"song_id,omitempty"`
 	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Title         string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Artist        string                 `protobuf:"bytes,5,opt,name=artist,proto3" json:"artist,omitempty"`
+	CoverUrl      string                 `protobuf:"bytes,6,opt,name=cover_url,json=coverUrl,proto3" json:"cover_url,omitempty"`
+	AudioUrl      string                 `protobuf:"bytes,7,opt,name=audio_url,json=audioUrl,proto3" json:"audio_url,omitempty"`
+	DurationS     int32                  `protobuf:"varint,8,opt,name=duration_s,json=durationS,proto3" json:"duration_s,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -479,6 +500,41 @@ func (x *AddSongRequest) GetUserId() string {
 		return x.UserId
 	}
 	return ""
+}
+
+func (x *AddSongRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *AddSongRequest) GetArtist() string {
+	if x != nil {
+		return x.Artist
+	}
+	return ""
+}
+
+func (x *AddSongRequest) GetCoverUrl() string {
+	if x != nil {
+		return x.CoverUrl
+	}
+	return ""
+}
+
+func (x *AddSongRequest) GetAudioUrl() string {
+	if x != nil {
+		return x.AudioUrl
+	}
+	return ""
+}
+
+func (x *AddSongRequest) GetDurationS() int32 {
+	if x != nil {
+		return x.DurationS
+	}
+	return 0
 }
 
 type AddSongResponse struct {
@@ -805,14 +861,16 @@ var File_playlist_playlist_proto protoreflect.FileDescriptor
 
 const file_playlist_playlist_proto_rawDesc = "" +
 	"\n" +
-	"\x17playlist/playlist.proto\x12\bplaylist\"\x90\x01\n" +
+	"\x17playlist/playlist.proto\x12\bplaylist\"\xca\x01\n" +
 	"\fPlaylistSong\x12\x17\n" +
 	"\asong_id\x18\x01 \x01(\tR\x06songId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x16\n" +
 	"\x06artist\x18\x03 \x01(\tR\x06artist\x12\x1a\n" +
 	"\bposition\x18\x04 \x01(\x05R\bposition\x12\x1d\n" +
 	"\n" +
-	"duration_s\x18\x05 \x01(\x05R\tdurationS\"\xf4\x01\n" +
+	"duration_s\x18\x05 \x01(\x05R\tdurationS\x12\x1b\n" +
+	"\tcover_url\x18\x06 \x01(\tR\bcoverUrl\x12\x1b\n" +
+	"\taudio_url\x18\a \x01(\tR\baudioUrl\"\xf4\x01\n" +
 	"\bPlaylist\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
@@ -839,12 +897,18 @@ const file_playlist_playlist_proto_rawDesc = "" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\"c\n" +
 	"\x19ListUserPlaylistsResponse\x120\n" +
 	"\tplaylists\x18\x01 \x03(\v2\x12.playlist.PlaylistR\tplaylists\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\"c\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\xea\x01\n" +
 	"\x0eAddSongRequest\x12\x1f\n" +
 	"\vplaylist_id\x18\x01 \x01(\tR\n" +
 	"playlistId\x12\x17\n" +
 	"\asong_id\x18\x02 \x01(\tR\x06songId\x12\x17\n" +
-	"\auser_id\x18\x03 \x01(\tR\x06userId\"G\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x12\x16\n" +
+	"\x06artist\x18\x05 \x01(\tR\x06artist\x12\x1b\n" +
+	"\tcover_url\x18\x06 \x01(\tR\bcoverUrl\x12\x1b\n" +
+	"\taudio_url\x18\a \x01(\tR\baudioUrl\x12\x1d\n" +
+	"\n" +
+	"duration_s\x18\b \x01(\x05R\tdurationS\"G\n" +
 	"\x0fAddSongResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1a\n" +
 	"\bposition\x18\x02 \x01(\x05R\bposition\"f\n" +
