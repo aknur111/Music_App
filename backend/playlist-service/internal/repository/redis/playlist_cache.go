@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	goredis "github.com/redis/go-redis/v9"
 	"github.com/music-app/playlist-service/internal/domain/entity"
 	"github.com/music-app/playlist-service/internal/domain/repository"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 const playlistTTL = 2 * time.Minute
@@ -30,6 +30,7 @@ func (c *playlistCache) GetUserPlaylists(ctx context.Context, userID string) ([]
 	if err != nil {
 		return nil, err
 	}
+
 	var playlists []*entity.Playlist
 	return playlists, json.Unmarshal(data, &playlists)
 }
