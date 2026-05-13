@@ -21,6 +21,7 @@ interface RecommendTrackRaw {
   instrumentalness: number
   loudness: number
   speechiness: number
+  preview_url?: string
 }
 
 async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
@@ -33,7 +34,7 @@ async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
     albumId: '',
     duration: Math.round(raw.duration_ms / 1000),
     coverUrl: '',
-    audioUrl: '',
+    audioUrl: raw.preview_url ?? '',
     genre: raw.genre,
     playCount: raw.popularity,
     likeCount: 0,
@@ -51,10 +52,14 @@ async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
   }
 
   try {
-    const hits = await fetchTracks({ search: raw.name, limit: 1 })
+    const firstArtist = raw.artists.split(',')[0].trim()
+    const hits = await fetchTracks({ search: `${firstArtist} ${raw.name}`, limit: 1 })
     if (hits.length > 0) {
       track.coverUrl = hits[0].image
-      track.audioUrl = hits[0].audio
+      // Use Jamendo audio only as fallback when backend has no iTunes preview URL
+      if (!track.audioUrl) {
+        track.audioUrl = hits[0].audio
+      }
     }
   } catch {
     // enrichment is best-effort; track usable with placeholder cover
@@ -109,6 +114,32 @@ export const RecommendationService = {
 
   async recordPlayback(trackId: string): Promise<void> {
     await post<{ status: string }>('/api/v1/recommendations/playback', { track_id: trackId })
+  },
+
+  async getTrendingTracks(limit = 20): Promise<Track[]> {
+    const data = await get<{ tracks: RecommendTrackRaw[] }>(
+      '/api/v1/recommendations/trending',
+      { limit },
+    )
+    return enrichAll(data.tracks ?? [])
+  },
+
+  async rateTrack(trackId: string, rating: number): Promise<void> {
+    await post<{ status: string }>('/api/v1/recommendations/rate', {
+      track_id: trackId,
+      rating,
+    })
+  },
+
+  async getMyWave(moodBias = '', limit = 30, excludeIds: string[] = []): Promise<Track[]> {
+    const params: Record<string, unknown> = { limit }
+    if (moodBias) params.mood = moodBias
+    if (excludeIds.length > 0) params.exclude = excludeIds.join(',')
+    const data = await get<{ tracks: RecommendTrackRaw[] }>(
+      '/api/v1/recommendations/wave',
+      params,
+    )
+    return enrichAll(data.tracks ?? [])
   },
 }
 

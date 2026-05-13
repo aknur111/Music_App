@@ -17,6 +17,9 @@ type RecommendationUsecase interface {
 	GetPersonal(ctx context.Context, userID string, limit int) ([]*entity.Track, error)
 	BuildMoodRadio(ctx context.Context, mood entity.Mood) ([]*entity.Track, error)
 	RecordPlay(ctx context.Context, userID, trackID string) error
+	GetTrending(ctx context.Context, limit int) ([]*entity.Track, error)
+	RateTrack(ctx context.Context, userID, trackID string, rating int32) error
+	GetMyWave(ctx context.Context, userID, moodBias string, limit int, excludeIDs []string) ([]*entity.Track, error)
 }
 
 type recommendationUsecase struct {

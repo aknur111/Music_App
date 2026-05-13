@@ -34,7 +34,7 @@ func (r *albumRepository) List(ctx context.Context, artistID string, page, limit
 	offset := (page - 1) * limit
 	rows, err := r.db.Query(ctx,
 		`SELECT id, title, artist_id, year, created_at FROM albums
-		 WHERE ($1 = '' OR artist_id = $1)
+		 WHERE ($1 = '' OR artist_id::text = $1)
 		 ORDER BY year DESC, title
 		 LIMIT $2 OFFSET $3`,
 		artistID, limit, offset,
@@ -55,7 +55,7 @@ func (r *albumRepository) List(ctx context.Context, artistID string, page, limit
 
 	var total int
 	_ = r.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM albums WHERE ($1 = '' OR artist_id = $1)`, artistID,
+		`SELECT COUNT(*) FROM albums WHERE ($1 = '' OR artist_id::text = $1)`, artistID,
 	).Scan(&total)
 
 	return albums, total, nil

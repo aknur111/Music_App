@@ -3,15 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/music-app/playlist-service/internal/infrastructure/grpcclient"
-	"google.golang.org/grpc/credentials/insecure"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -22,7 +19,7 @@ import (
 	"github.com/nats-io/nats.go"
 	goredis "github.com/redis/go-redis/v9"
 
-	pb "github.com/NoneNon9/Music-app-gen/playlist"
+	pb "github.com/music-app/playlist-service/gen/playlist"
 	"github.com/music-app/playlist-service/internal/config"
 	deliveryGRPC "github.com/music-app/playlist-service/internal/delivery/grpc"
 	deliveryNATS "github.com/music-app/playlist-service/internal/delivery/nats"
@@ -64,22 +61,11 @@ func main() {
 		logger.Fatal("jetstream context", zap.Error(err))
 	}
 
-	musicConn, err := grpc.NewClient(
-		cfg.MusicServiceAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-	)
-	if err != nil {
-		logger.Fatal("music service dial", zap.Error(err))
-	}
-	defer musicConn.Close()
-
 	playlistRepo := repoPG.NewPlaylistRepository(db)
 	cache := repoRedis.NewPlaylistCache(redisClient)
 	publisher := deliveryNATS.NewPublisher(js)
-	musicClientAdapter := grpcclient.NewMusicClient(musicConn)
 
-	uc := usecase.NewPlaylistUsecase(playlistRepo, cache, publisher, musicClientAdapter)
+	uc := usecase.NewPlaylistUsecase(playlistRepo, cache, publisher)
 
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),

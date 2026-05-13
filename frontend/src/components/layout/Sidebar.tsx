@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PlaylistService } from '@/services/playlist.service';
+import type { Playlist } from '@/types';
 import {
   Home,
-  Sparkles,
+  Radio,
   Music,
   Mic2,
   Disc3,
@@ -27,20 +29,13 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', icon: Home, path: '/home' },
-  { label: 'Discover', icon: Sparkles, path: '/discover/moods' },
-  { label: 'Tracks', icon: Music, path: '/tracks' },
-  { label: 'Artists', icon: Mic2, path: '/artists' },
-  { label: 'Albums', icon: Disc3, path: '/albums' },
-  { label: 'Library', icon: Library, path: '/library' },
-  { label: 'Favorites', icon: Heart, path: '/favorites' },
-];
-
-// Placeholder playlists – replace with real data from your playlist store/hook
-const MOCK_PLAYLISTS = [
-  { id: '1', name: 'Late Night Vibes' },
-  { id: '2', name: 'Workout Anthems' },
-  { id: '3', name: 'Chill Study Mix' },
+  { label: 'Home',      icon: Home,    path: '/home' },
+  { label: 'My Wave',   icon: Radio,   path: '/wave' },
+  { label: 'Tracks',    icon: Music,   path: '/tracks' },
+  { label: 'Artists',   icon: Mic2,    path: '/artists' },
+  { label: 'Albums',    icon: Disc3,   path: '/albums' },
+  { label: 'Library',   icon: Library, path: '/library' },
+  { label: 'Favorites', icon: Heart,   path: '/favorites' },
 ];
 
 export const Sidebar: React.FC = () => {
@@ -50,6 +45,29 @@ export const Sidebar: React.FC = () => {
   const { currentTrack } = usePlayerStore();
   const { isCollapsed, toggleCollapse } = useSidebarStore();
   const [playlistHover, setPlaylistHover] = useState<string | null>(null);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    PlaylistService.getUserPlaylists().then(setPlaylists).catch(() => {});
+  }, []);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPlaylistName.trim()) return;
+    setCreating(true);
+    try {
+      const pl = await PlaylistService.createPlaylist({ name: newPlaylistName.trim() });
+      setPlaylists((prev) => [pl, ...prev]);
+      setNewPlaylistName('');
+      setShowCreateModal(false);
+      navigate(`/playlists/${pl.id}`);
+    } finally {
+      setCreating(false);
+    }
+  }
 
   const sidebarWidth = isCollapsed ? 72 : 240;
 
@@ -199,7 +217,7 @@ export const Sidebar: React.FC = () => {
               <motion.button
                 whileHover={{ scale: 1.15, color: 'rgba(167, 139, 250, 1)' }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => navigate('/playlists/new')}
+                onClick={() => setShowCreateModal(true)}
                 className="text-white/30 hover:text-violet-400 transition-colors duration-200"
                 title="New Playlist"
               >
@@ -208,7 +226,10 @@ export const Sidebar: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-0.5 overflow-y-auto max-h-40 scrollbar-none">
-              {MOCK_PLAYLISTS.map((pl) => (
+              {playlists.length === 0 && (
+                <p className="text-[11px] text-white/20 px-2 py-1">No playlists yet</p>
+              )}
+              {playlists.map((pl) => (
                 <motion.button
                   key={pl.id}
                   onHoverStart={() => setPlaylistHover(pl.id)}
@@ -229,6 +250,54 @@ export const Sidebar: React.FC = () => {
                 </motion.button>
               ))}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create playlist modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              className="w-80 bg-[#13131f] border border-white/10 rounded-2xl p-6 shadow-2xl"
+            >
+              <h3 className="text-base font-semibold text-white mb-4">New Playlist</h3>
+              <form onSubmit={handleCreate} className="flex flex-col gap-3">
+                <input
+                  autoFocus
+                  value={newPlaylistName}
+                  onChange={(e) => setNewPlaylistName(e.target.value)}
+                  placeholder="Playlist name…"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/60"
+                />
+                <div className="flex gap-2 justify-end mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2 rounded-xl text-sm text-white/50 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!newPlaylistName.trim() || creating}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50"
+                  >
+                    {creating ? 'Creating…' : 'Create'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -291,7 +360,7 @@ export const Sidebar: React.FC = () => {
               <motion.button
                 whileHover={{ rotate: 30, color: 'rgba(167, 139, 250, 1)' }}
                 transition={{ duration: 0.2 }}
-                onClick={() => navigate('/settings')}
+                onClick={() => navigate('/profile')}
                 className="text-white/25 hover:text-violet-400 flex-shrink-0"
               >
                 <Settings className="w-3.5 h-3.5" />

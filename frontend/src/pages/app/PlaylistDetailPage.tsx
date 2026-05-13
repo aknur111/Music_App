@@ -1,21 +1,89 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Play, ArrowLeft, Lock, Globe } from 'lucide-react'
-import { MOCK_PLAYLISTS } from '@/lib/mockData'
-import { formatDuration, formatCount } from '@/lib/utils'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Play, ArrowLeft, ListMusic, Trash2, Pencil } from 'lucide-react'
+import { PlaylistService } from '@/services/playlist.service'
+import { TrackCard } from '@/components/shared/TrackCard'
 import { usePlayerStore } from '@/store/playerStore'
+import type { Playlist } from '@/types'
 
 export default function PlaylistDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { playTrack } = usePlayerStore()
-  const playlist = MOCK_PLAYLISTS.find((p) => p.id === id)
+  const { playTrack, addToQueue } = usePlayerStore()
 
-  if (!playlist) {
+  const [playlist, setPlaylist] = useState<Playlist | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    setLoading(true)
+    PlaylistService.getPlaylist(id)
+      .then((pl) => { setPlaylist(pl); setEditName(pl.name); setEditDesc(pl.description ?? '') })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  async function handleRemoveTrack(trackId: string) {
+    if (!id) return
+    await PlaylistService.removeTrack(id, trackId)
+    setPlaylist((prev) =>
+      prev
+        ? {
+            ...prev,
+            tracks: (prev.tracks ?? []).filter((t) => t.id !== trackId),
+            trackIds: prev.trackIds.filter((tid) => tid !== trackId),
+          }
+        : prev
+    )
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!id || !editName.trim()) return
+    setSaving(true)
+    try {
+      const updated = await PlaylistService.updatePlaylist(id, editName.trim(), editDesc.trim())
+      setPlaylist((prev) => prev ? { ...prev, name: updated.name, description: updated.description } : prev)
+      setShowEdit(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!id || !window.confirm('Delete this playlist? This cannot be undone.')) return
+    setDeleting(true)
+    try {
+      await PlaylistService.deletePlaylist(id)
+      navigate('/library')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  if (loading) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-[#94a3b8]">Playlist not found.</p>
-        <button onClick={() => navigate(-1)} className="mt-4 text-sm text-violet-400 hover:text-violet-300">
+      <div className="p-6 flex items-center justify-center py-24">
+        <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+      </div>
+    )
+  }
+
+  if (error || !playlist) {
+    return (
+      <div className="p-6 text-center py-24">
+        <p className="text-white/40 mb-4">Playlist not found.</p>
+        <button
+          onClick={() => navigate(-1)}
+          className="text-sm text-violet-400 hover:text-violet-300"
+        >
           Go back
         </button>
       </div>
@@ -23,80 +91,165 @@ export default function PlaylistDetailPage() {
   }
 
   const tracks = playlist.tracks ?? []
-  const totalDuration = tracks.reduce((acc, t) => acc + t.duration, 0)
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-32">
-      <div className="relative">
-        <div
-          className="absolute inset-0 h-64 bg-cover bg-center blur-2xl opacity-20"
-          style={{ backgroundImage: `url(${playlist.coverUrl})` }}
-        />
+      {/* Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-violet-900/30 to-cyan-900/20 border-b border-white/[0.06]">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d0d1a]/80 pointer-events-none" />
         <div className="relative z-10 p-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-sm text-[#94a3b8] hover:text-[#f8fafc] mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-          <div className="flex items-end gap-6">
-            <img
-              src={playlist.coverUrl}
-              alt={playlist.name}
-              className="w-40 h-40 rounded-2xl object-cover shadow-glass-lg"
-            />
-            <div>
-              <p className="text-xs text-[#94a3b8] uppercase tracking-widest mb-1">Playlist</p>
-              <h1 className="text-3xl font-black text-[#f8fafc] mb-1">{playlist.name}</h1>
-              {playlist.description && (
-                <p className="text-sm text-[#94a3b8] mb-1">{playlist.description}</p>
-              )}
-              <div className="flex items-center gap-3 text-sm text-[#64748b]">
-                <span>{playlist.ownerName ?? 'Unknown'}</span>
-                <span>·</span>
-                <span>{tracks.length} tracks · {formatDuration(totalDuration)}</span>
-                <span>·</span>
-                <span className="flex items-center gap-1">
-                  {playlist.isPublic
-                    ? <><Globe className="w-3.5 h-3.5" /> Public</>
-                    : <><Lock className="w-3.5 h-3.5" /> Private</>
-                  }
-                </span>
-              </div>
-              <button
-                onClick={() => tracks.length > 0 && playTrack(tracks[0], tracks)}
-                className="mt-4 flex items-center gap-2 px-6 py-2.5 rounded-full bg-violet-600 hover:bg-violet-500 font-semibold text-sm transition-all shadow-glow active:scale-95"
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+            <div className="flex items-center gap-2">
+              <motion.button
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setShowEdit(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white/50 hover:text-white hover:bg-white/5 transition-all"
               >
-                <Play className="w-4 h-4 fill-white text-white" />
-                Play
-              </button>
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {deleting ? 'Deleting…' : 'Delete'}
+              </motion.button>
+            </div>
+          </div>
+
+          <div className="flex items-end gap-6">
+            <div className="w-36 h-36 rounded-2xl bg-gradient-to-br from-violet-600/30 to-cyan-600/20 flex items-center justify-center border border-white/[0.08] shadow-2xl flex-shrink-0">
+              <ListMusic className="w-14 h-14 text-violet-400/50" />
+            </div>
+            <div className="pb-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-1">Playlist</p>
+              <h1 className="text-3xl font-black text-white mb-1">{playlist.name}</h1>
+              {playlist.description && (
+                <p className="text-sm text-white/50 mb-2">{playlist.description}</p>
+              )}
+              <p className="text-sm text-white/30">
+                {tracks.length} track{tracks.length !== 1 ? 's' : ''}
+                {' · '}
+                {new Date(playlist.createdAt).toLocaleDateString()}
+              </p>
+
+              {tracks.length > 0 && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => playTrack(tracks[0], tracks)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold shadow-lg shadow-violet-900/40 transition-colors mt-4"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  Play All
+                </motion.button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="px-6 mt-4 space-y-1">
-        {tracks.map((track, i) => (
-          <div
-            key={track.id}
-            onClick={() => playTrack(track, tracks)}
-            className="flex items-center gap-4 px-4 py-2.5 rounded-xl hover:bg-white/4 transition-colors group cursor-pointer"
-          >
-            <span className="w-5 text-right text-sm text-[#64748b] font-mono group-hover:hidden">{i + 1}</span>
-            <button className="hidden group-hover:flex" onClick={(e) => { e.stopPropagation(); playTrack(track, tracks) }}>
-              <Play className="w-4 h-4 fill-violet-400 text-violet-400" />
-            </button>
-            <img src={track.coverUrl} alt="" className="w-9 h-9 rounded-lg object-cover" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#f8fafc] truncate">{track.title}</p>
-              <p className="text-xs text-[#94a3b8]">{track.artist}</p>
-            </div>
-            <span className="text-xs text-[#64748b]">{formatCount(track.playCount)}</span>
-            <span className="text-xs text-[#64748b] tabular-nums">{formatDuration(track.duration)}</span>
+      {/* Track list */}
+      <div className="px-4 pt-4">
+        {tracks.length === 0 ? (
+          <div className="flex flex-col items-center py-16 gap-3">
+            <ListMusic className="w-10 h-10 text-white/15" />
+            <p className="text-white/40 text-sm">No tracks in this playlist yet</p>
           </div>
-        ))}
+        ) : (
+          <div className="flex flex-col gap-1">
+            {tracks.map((track, i) => (
+              <div key={track.id} className="group flex items-center">
+                <div className="flex-1 min-w-0">
+                  <TrackCard
+                    track={track}
+                    queue={tracks}
+                    index={i}
+                    showIndex
+                    onAddToQueue={(t) => addToQueue(t)}
+                  />
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => handleRemoveTrack(track.id)}
+                  className="opacity-0 group-hover:opacity-100 ml-2 p-2 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
+                  title="Remove from playlist"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </motion.button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Edit modal */}
+      <AnimatePresence>
+        {showEdit && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowEdit(false) }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              className="w-96 bg-[#13131f] border border-white/10 rounded-2xl p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold text-white mb-5">Edit Playlist</h3>
+              <form onSubmit={handleSaveEdit} className="flex flex-col gap-3">
+                <input
+                  autoFocus
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Playlist name"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/60"
+                />
+                <textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  placeholder="Description (optional)"
+                  rows={2}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/60 resize-none"
+                />
+                <div className="flex gap-2 justify-end mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEdit(false)}
+                    className="px-4 py-2 rounded-xl text-sm text-white/50 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!editName.trim() || saving}
+                    className="px-5 py-2 rounded-xl text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50"
+                  >
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

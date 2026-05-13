@@ -23,6 +23,7 @@ message TrackProto {
   double instrumentalness  = 14;
   double loudness          = 15;
   double speechiness       = 16;
+  string preview_url       = 17;
 }
 
 message MoodRequest {
@@ -57,17 +58,36 @@ message PlaybackResponse {
   bool success = 1;
 }
 
+message TrendingRequest {
+  int32 limit = 1;  // default 20
+}
+
+message RateTrackRequest {
+  string user_id  = 1;
+  string track_id = 2;
+  int32  rating   = 3;  // 1 (dislike) or 5 (like)
+}
+
+message RateTrackResponse {
+  bool success = 1;
+}
+
+message WaveRequest {
+  string user_id        = 1;
+  string mood_bias      = 2;  // optional: "happy"|"chill"|etc — blended 40% into profile vector
+  int32  limit          = 3;  // default 30
+  repeated string exclude_ids = 4;  // recently played track IDs to skip
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 service RecommendationService {
-  // endpoint 18 — mood-based recommendations (top-100 cached in Redis, 1h TTL)
   rpc GetRecommendationsByMood(MoodRequest) returns (TracksResponse);
-  // endpoint 19 — tracks similar to a given track by cosine similarity
   rpc GetSimilarTracks(SimilarRequest) returns (TracksResponse);
-  // endpoint 20 — personalised picks derived from user taste profile
   rpc GetPersonalRecommendations(PersonalRequest) returns (TracksResponse);
-  // endpoint 21 — 30-track playlist with warm-up / peak / cool-down arc
   rpc GetMoodRadio(MoodRadioRequest) returns (TracksResponse);
-  // endpoint 22 — record a play event and update weighted taste profile
   rpc RecordPlayback(PlaybackRequest) returns (PlaybackResponse);
+  rpc GetTrendingTracks(TrendingRequest) returns (TracksResponse);
+  rpc RateTrack(RateTrackRequest) returns (RateTrackResponse);
+  rpc GetMyWave(WaveRequest) returns (TracksResponse);
 }

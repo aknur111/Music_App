@@ -18,9 +18,30 @@ message SendEmailResponse {
   string message  = 2;
 }
 
+message WelcomeEmailRequest {
+  string to   = 1;
+  string name = 2;
+}
+
+message PasswordResetEmailRequest {
+  string to         = 1;
+  string name       = 2;
+  string reset_link = 3;
+}
+
+message PlaylistSharedEmailRequest {
+  string to             = 1;
+  string recipient_name = 2;
+  string sender_name    = 3;
+  string playlist_name  = 4;
+  string playlist_link  = 5;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 service NotificationService {
-  // endpoint 17
   rpc SendDirectEmail(SendEmailRequest) returns (SendEmailResponse);
+  rpc SendWelcomeEmail(WelcomeEmailRequest) returns (SendEmailResponse);
+  rpc SendPasswordResetEmail(PasswordResetEmailRequest) returns (SendEmailResponse);
+  rpc SendPlaylistSharedEmail(PlaylistSharedEmailRequest) returns (SendEmailResponse);
 }
