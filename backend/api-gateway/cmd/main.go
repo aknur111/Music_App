@@ -52,11 +52,10 @@ func main() {
 	}
 	defer recommConn.Close()
 
-	recommClient := client.NewRecommendationClient(recommConn)
+	authClient := authpb.NewAuthServiceClient(authConn)
 	musicClient := client.NewMusicClient(musicConn)
 	playlistClient := client.NewPlaylistClient(playlistConn)
-
-	authClient := authpb.NewAuthServiceClient(authConn)
+	recommClient := client.NewRecommendationClient(recommConn)
 
 	clients := &handler.Clients{
 		RegisterUser: func(ctx context.Context, name, email, password string) (string, error) {
@@ -83,32 +82,11 @@ func main() {
 		},
 
 		LogoutUser: func(ctx context.Context, token string) error {
-			_, err := authClient.Logout(ctx, &authpb.LogoutRequest{AccessToken: token})
+			_, err := authClient.Logout(ctx, &authpb.LogoutRequest{
+				AccessToken: token,
+			})
 			return err
 		},
-
-		GetSong:    musicClient.GetSong,
-		ListSongs:  musicClient.ListSongs,
-		SearchSongs: musicClient.SearchSongs,
-		GetAlbum:   musicClient.GetAlbum,
-		ListAlbums: musicClient.ListAlbums,
-
-		CreatePlaylist: playlistClient.CreatePlaylist,
-		GetPlaylist:    playlistClient.GetPlaylist,
-		ListPlaylists:  playlistClient.ListPlaylists,
-		AddSong:        playlistClient.AddSong,
-		RemoveSong:     playlistClient.RemoveSong,
-		UpdatePlaylist: playlistClient.UpdatePlaylist,
-		DeletePlaylist: playlistClient.DeletePlaylist,
-
-		GetRecommendationsByMood:   recommClient.GetByMood,
-		GetMoodRadio:               recommClient.GetMoodRadio,
-		GetSimilarTracks:           recommClient.GetSimilar,
-		GetPersonalRecommendations: recommClient.GetPersonal,
-		RecordPlayback:             recommClient.RecordPlayback,
-		GetTrendingTracks:          recommClient.GetTrending,
-		RateTrack:                  recommClient.RateTrack,
-		GetMyWave:                  recommClient.GetMyWave,
 
 		RefreshToken: func(ctx context.Context, refreshToken string) (string, string, int64, error) {
 			resp, err := authClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{
@@ -129,6 +107,31 @@ func main() {
 			}
 			return resp.UserId, resp.Email, resp.Valid
 		},
+
+		GetSong:       musicClient.GetSong,
+		ListSongs:     musicClient.ListSongs,
+		SearchSongs:   musicClient.SearchSongs,
+		GetArtist:     musicClient.GetArtist,
+		ListArtists:   musicClient.ListArtists,
+		SearchArtists: musicClient.SearchArtists,
+		UploadSong:    musicClient.UploadSong,
+
+		CreatePlaylist: playlistClient.CreatePlaylist,
+		GetPlaylist:    playlistClient.GetPlaylist,
+		ListPlaylists:  playlistClient.ListPlaylists,
+		AddSong:        playlistClient.AddSong,
+		RemoveSong:     playlistClient.RemoveSong,
+		UpdatePlaylist: playlistClient.UpdatePlaylist,
+		DeletePlaylist: playlistClient.DeletePlaylist,
+
+		GetRecommendationsByMood:   recommClient.GetByMood,
+		GetMoodRadio:               recommClient.GetMoodRadio,
+		GetSimilarTracks:           recommClient.GetSimilar,
+		GetPersonalRecommendations: recommClient.GetPersonal,
+		RecordPlayback:             recommClient.RecordPlayback,
+		GetTrendingTracks:          recommClient.GetTrending,
+		RateTrack:                  recommClient.RateTrack,
+		GetMyWave:                  recommClient.GetMyWave,
 	}
 
 	r := chi.NewRouter()
@@ -158,9 +161,11 @@ func main() {
 	}()
 
 	<-quit
+
 	logger.Info("shutting down api-gateway")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
 	_ = srv.Shutdown(shutdownCtx)
 }

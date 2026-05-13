@@ -48,11 +48,22 @@ func (r *songRepository) List(ctx context.Context, artistID, albumID string, pag
 	defer rows.Close()
 
 	var songs []*entity.Song
+
 	for rows.Next() {
 		s := &entity.Song{}
-		if err := rows.Scan(&s.ID, &s.Title, &s.ArtistID, &s.AlbumID, &s.DurationS, &s.Genre, &s.CreatedAt); err != nil {
+
+		if err := rows.Scan(
+			&s.ID,
+			&s.Title,
+			&s.ArtistID,
+			&s.AlbumID,
+			&s.DurationS,
+			&s.Genre,
+			&s.CreatedAt,
+		); err != nil {
 			return nil, 0, err
 		}
+
 		songs = append(songs, s)
 	}
 
@@ -66,15 +77,23 @@ func (r *songRepository) List(ctx context.Context, artistID, albumID string, pag
 	return songs, total, nil
 }
 
-func (r *songRepository) Search(ctx context.Context, query string, page, limit int) ([]*entity.Song, int, error) {
+func (r *songRepository) Search(
+	ctx context.Context,
+	query string,
+	page, limit int,
+) ([]*entity.Song, int, error) {
+
 	offset := (page - 1) * limit
-	rows, err := r.db.Query(ctx,
+	pattern := "%" + query + "%"
+
+	rows, err := r.db.Query(
+		ctx,
 		`SELECT id, title, artist_id, COALESCE(album_id::text,''), duration_s, COALESCE(genre,''), created_at
 		 FROM songs
-		 WHERE search_vec @@ plainto_tsquery('english', $1)
-		 ORDER BY ts_rank(search_vec, plainto_tsquery('english', $1)) DESC
+		 WHERE title ILIKE $1
+		 ORDER BY created_at DESC
 		 LIMIT $2 OFFSET $3`,
-		query, limit, offset,
+		pattern, limit, offset,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -82,17 +101,33 @@ func (r *songRepository) Search(ctx context.Context, query string, page, limit i
 	defer rows.Close()
 
 	var songs []*entity.Song
+
 	for rows.Next() {
 		s := &entity.Song{}
-		if err := rows.Scan(&s.ID, &s.Title, &s.ArtistID, &s.AlbumID, &s.DurationS, &s.Genre, &s.CreatedAt); err != nil {
+
+		if err := rows.Scan(
+			&s.ID,
+			&s.Title,
+			&s.ArtistID,
+			&s.AlbumID,
+			&s.DurationS,
+			&s.Genre,
+			&s.CreatedAt,
+		); err != nil {
 			return nil, 0, err
 		}
+
 		songs = append(songs, s)
 	}
 
 	var total int
-	_ = r.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM songs WHERE search_vec @@ plainto_tsquery('english', $1)`, query,
+
+	_ = r.db.QueryRow(
+		ctx,
+		`SELECT COUNT(*)
+		 FROM songs
+		 WHERE title ILIKE $1`,
+		pattern,
 	).Scan(&total)
 
 	return songs, total, nil
