@@ -360,7 +360,7 @@ export const Sidebar: React.FC = () => {
               <motion.button
                 whileHover={{ rotate: 30, color: 'rgba(167, 139, 250, 1)' }}
                 transition={{ duration: 0.2 }}
-                onClick={() => navigate('/settings')}
+                onClick={() => navigate('/profile')}
                 className="text-white/25 hover:text-violet-400 flex-shrink-0"
               >
                 <Settings className="w-3.5 h-3.5" />

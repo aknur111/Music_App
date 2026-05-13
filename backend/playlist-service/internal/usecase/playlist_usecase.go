@@ -23,7 +23,7 @@ type PlaylistUsecase interface {
 	CreatePlaylist(ctx context.Context, userID, name, description string) (*entity.Playlist, error)
 	GetPlaylist(ctx context.Context, id, userID string) (*entity.Playlist, error)
 	ListUserPlaylists(ctx context.Context, userID string, page, limit int) ([]*entity.Playlist, int, error)
-	AddSongToPlaylist(ctx context.Context, playlistID, songID, userID string) (int, error)
+	AddSongToPlaylist(ctx context.Context, playlistID, songID, userID, title, artist, coverURL, audioURL string, durationS int) (int, error)
 	RemoveSongFromPlaylist(ctx context.Context, playlistID, songID, userID string) error
 	UpdatePlaylist(ctx context.Context, id, userID, name, description string) (*entity.Playlist, error)
 	DeletePlaylist(ctx context.Context, id, userID string) error
@@ -63,6 +63,10 @@ func (u *playlistUsecase) GetPlaylist(ctx context.Context, id, userID string) (*
 	if p == nil {
 		return nil, ErrNotFound
 	}
+	songs, err := u.repo.GetSongs(ctx, id)
+	if err == nil {
+		p.Songs = songs
+	}
 	return p, nil
 }
 
@@ -78,8 +82,7 @@ func (u *playlistUsecase) ListUserPlaylists(ctx context.Context, userID string, 
 	return playlists, total, nil
 }
 
-func (u *playlistUsecase) AddSongToPlaylist(ctx context.Context, playlistID, songID, userID string) (int, error) {
-	// verify ownership
+func (u *playlistUsecase) AddSongToPlaylist(ctx context.Context, playlistID, songID, userID, title, artist, coverURL, audioURL string, durationS int) (int, error) {
 	p, err := u.repo.GetByID(ctx, playlistID, userID)
 	if err != nil || p == nil {
 		return 0, ErrNotFound
@@ -88,7 +91,11 @@ func (u *playlistUsecase) AddSongToPlaylist(ctx context.Context, playlistID, son
 	ps := &entity.PlaylistSong{
 		PlaylistID: playlistID,
 		SongID:     songID,
-		AddedAt:    time.Now().UTC(),
+		Title:      title,
+		Artist:     artist,
+		CoverURL:   coverURL,
+		AudioURL:   audioURL,
+		DurationS:  durationS,
 	}
 	position, err := u.repo.AddSong(ctx, ps)
 	if err != nil {

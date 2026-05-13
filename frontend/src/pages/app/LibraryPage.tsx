@@ -104,21 +104,22 @@ export default function LibraryPage() {
               onClick={() => navigate(`/playlists/${pl.id}`)}
               className="group cursor-pointer bg-white/[0.03] border border-white/[0.07] hover:bg-white/[0.06] hover:border-violet-500/20 rounded-2xl p-4 transition-all duration-200"
             >
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-600/30 to-cyan-600/20 flex items-center justify-center flex-shrink-0 border border-white/[0.06]">
-                  <ListMusic className="w-6 h-6 text-violet-400/60" />
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-600/30 to-cyan-600/20 flex items-center justify-center flex-shrink-0 border border-white/[0.06] shadow-lg shadow-violet-900/10">
+                  <ListMusic className="w-6 h-6 text-violet-400/70" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2">
                     <h3 className="font-semibold text-white group-hover:text-violet-300 truncate transition-colors">
                       {pl.name}
                     </h3>
-                    <Lock className="w-3.5 h-3.5 text-white/20 flex-shrink-0 mt-0.5" />
+                    <Lock className="w-3 h-3 text-white/15 flex-shrink-0" />
                   </div>
                   {pl.description && (
-                    <p className="text-xs text-white/40 mt-0.5 line-clamp-1">{pl.description}</p>
+                    <p className="text-xs text-white/35 mt-0.5 line-clamp-1">{pl.description}</p>
                   )}
-                  <p className="text-xs text-white/25 mt-1">
+                  <p className="text-xs text-white/20 mt-1">
+                    {pl.trackIds.length > 0 ? `${pl.trackIds.length} tracks · ` : ''}
                     {new Date(pl.createdAt).toLocaleDateString()}
                   </p>
                 </div>

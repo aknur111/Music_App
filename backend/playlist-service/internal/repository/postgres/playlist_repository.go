@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -77,13 +76,13 @@ func (r *playlistRepository) AddSong(ctx context.Context, ps *entity.PlaylistSon
 
 	var position int
 	err = tx.QueryRow(ctx,
-		`INSERT INTO playlist_songs (playlist_id, song_id, position, added_at)
-		 VALUES ($1, $2,
+		`INSERT INTO playlist_songs (playlist_id, song_id, title, artist, cover_url, audio_url, duration_s, position, added_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7,
 		   (SELECT COALESCE(MAX(position), 0) + 1 FROM playlist_songs WHERE playlist_id = $1),
-		   $3)
+		   NOW())
 		 ON CONFLICT (playlist_id, song_id) DO NOTHING
 		 RETURNING position`,
-		ps.PlaylistID, ps.SongID, time.Now().UTC(),
+		ps.PlaylistID, ps.SongID, ps.Title, ps.Artist, ps.CoverURL, ps.AudioURL, ps.DurationS,
 	).Scan(&position)
 	if err != nil {
 		return 0, err
@@ -144,8 +143,8 @@ func (r *playlistRepository) Delete(ctx context.Context, id, userID string) erro
 
 func (r *playlistRepository) GetSongs(ctx context.Context, playlistID string) ([]*entity.PlaylistSong, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT playlist_id, song_id, position, added_at FROM playlist_songs
-		 WHERE playlist_id = $1 ORDER BY position`, playlistID,
+		`SELECT playlist_id, song_id, title, artist, cover_url, audio_url, duration_s, position, added_at
+		 FROM playlist_songs WHERE playlist_id = $1 ORDER BY position`, playlistID,
 	)
 	if err != nil {
 		return nil, err
@@ -155,7 +154,7 @@ func (r *playlistRepository) GetSongs(ctx context.Context, playlistID string) ([
 	var songs []*entity.PlaylistSong
 	for rows.Next() {
 		ps := &entity.PlaylistSong{}
-		if err := rows.Scan(&ps.PlaylistID, &ps.SongID, &ps.Position, &ps.AddedAt); err != nil {
+		if err := rows.Scan(&ps.PlaylistID, &ps.SongID, &ps.Title, &ps.Artist, &ps.CoverURL, &ps.AudioURL, &ps.DurationS, &ps.Position, &ps.AddedAt); err != nil {
 			return nil, err
 		}
 		songs = append(songs, ps)

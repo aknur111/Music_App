@@ -10,6 +10,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { SimilarTracksModal } from '@/components/shared/SimilarTracksModal';
+import { AddToPlaylistModal } from '@/components/shared/AddToPlaylistModal';
 import { clsx } from 'clsx';
 import { AudioWaveform } from '@/components/ui/AudioWaveform';
 import { usePlayerStore } from '@/store/playerStore';
@@ -50,6 +51,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [similarOpen, setSimilarOpen] = useState(false);
+  const [playlistModalOpen, setPlaylistModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayerStore();
@@ -229,7 +231,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
               >
                 {[
                   { label: 'Add to Queue', icon: ListPlus, action: () => onAddToQueue?.(track) },
-                  { label: 'Add to Playlist', icon: PlusCircle, action: () => onAddToPlaylist?.(track) },
+                  { label: 'Add to Playlist', icon: PlusCircle, action: () => { onAddToPlaylist?.(track); setPlaylistModalOpen(true); } },
                   { label: liked ? 'Unlike' : 'Like', icon: Heart, action: () => { toggleFav(track); onLike?.(track); } },
                 ].map(({ label, icon: Icon, action }) => (
                   <button
@@ -259,6 +261,10 @@ export const TrackCard: React.FC<TrackCardProps> = ({
         onClose={() => setSimilarOpen(false)}
       />
     )}
+    <AddToPlaylistModal
+      track={playlistModalOpen ? track : null}
+      onClose={() => setPlaylistModalOpen(false)}
+    />
     </>
   );
 };
