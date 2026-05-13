@@ -29,8 +29,10 @@ func (r *playlistRepository) Create(ctx context.Context, p *entity.Playlist) err
 
 func (r *playlistRepository) GetByID(ctx context.Context, id, userID string) (*entity.Playlist, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, user_id, name, description, song_count, created_at, updated_at
-		 FROM playlists WHERE id = $1 AND user_id = $2`, id, userID,
+		`SELECT p.id, p.user_id, p.name, p.description, p.song_count, p.created_at, p.updated_at
+		 FROM playlists p
+		 LEFT JOIN playlist_collaborators c ON p.id = c.playlist_id AND c.user_id = $2
+		 WHERE p.id = $1 AND (p.user_id = $2 OR c.user_id IS NOT NULL)`, id, userID,
 	)
 	p := &entity.Playlist{}
 	err := row.Scan(&p.ID, &p.UserID, &p.Name, &p.Description, &p.SongCount, &p.CreatedAt, &p.UpdatedAt)
@@ -160,4 +162,24 @@ func (r *playlistRepository) GetSongs(ctx context.Context, playlistID string) ([
 		songs = append(songs, ps)
 	}
 	return songs, nil
+}
+func (r *playlistRepository) AddCollaborator(ctx context.Context, playlistID, ownerID, collaboratorID string) error {
+	var actualOwner string
+	err := r.db.QueryRow(ctx, "SELECT user_id FROM playlists WHERE id = $1", playlistID).Scan(&actualOwner)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errors.New("playlist not found")
+		}
+		return err
+	}
+	if actualOwner != ownerID {
+		return errors.New("forbidden")
+	}
+
+	_, err = r.db.Exec(ctx,
+		`INSERT INTO playlist_collaborators (playlist_id, user_id, added_at)
+		 VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING`,
+		playlistID, collaboratorID,
+	)
+	return err
 }

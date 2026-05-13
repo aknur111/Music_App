@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/music-app/playlist-service/internal/infrastructure/grpcclient"
+	"google.golang.org/grpc/credentials/insecure"
 	"net"
 	"net/http"
 	"os"
@@ -61,11 +63,22 @@ func main() {
 		logger.Fatal("jetstream context", zap.Error(err))
 	}
 
+	musicConn, err := grpc.NewClient(
+		cfg.MusicServiceAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+	)
+	if err != nil {
+		logger.Fatal("music service dial", zap.Error(err))
+	}
+	defer musicConn.Close()
+	musicClient := grpcclient.NewMusicClient(musicConn)
+
 	playlistRepo := repoPG.NewPlaylistRepository(db)
 	cache := repoRedis.NewPlaylistCache(redisClient)
 	publisher := deliveryNATS.NewPublisher(js)
 
-	uc := usecase.NewPlaylistUsecase(playlistRepo, cache, publisher)
+	uc := usecase.NewPlaylistUsecase(playlistRepo, cache, publisher, musicClient)
 
 	grpcServer := grpc.NewServer(
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
