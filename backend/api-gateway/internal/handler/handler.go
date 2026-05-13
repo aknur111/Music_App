@@ -47,8 +47,9 @@ type Clients struct {
 	RateTrack                  func(ctx context.Context, userID, trackID string, rating int32) error
 	GetMyWave                  func(ctx context.Context, userID, moodBias string, limit int32, excludeIDs []string) (interface{}, error)
 
-	UpdatePlaylist func(ctx context.Context, playlistID, userID, name, description string) (interface{}, error)
-	DeletePlaylist func(ctx context.Context, playlistID, userID string) error
+	UpdatePlaylist  func(ctx context.Context, playlistID, userID, name, description string) (interface{}, error)
+	DeletePlaylist  func(ctx context.Context, playlistID, userID string) error
+	AddCollaborator func(ctx context.Context, playlistID, ownerID, collaboratorID string) error
 }
 
 func Router(clients *Clients) http.Handler {
@@ -82,6 +83,7 @@ func Router(clients *Clients) http.Handler {
 	r.With(authMw).Delete("/api/v1/playlists/{playlist_id}", deletePlaylistHandler(clients))
 	r.With(authMw).Post("/api/v1/playlists/{playlist_id}/songs", addSongHandler(clients))
 	r.With(authMw).Delete("/api/v1/playlists/{playlist_id}/songs/{song_id}", removeSongHandler(clients))
+	r.With(authMw).Post("/api/v1/playlists/{playlist_id}/collaborators", addCollaboratorHandler(clients))
 
 	// ── Recommendation endpoints ──────────────────────────────────────────────
 	r.Route("/api/v1/recommendations", func(r chi.Router) {
@@ -639,6 +641,31 @@ func deletePlaylistHandler(c *Clients) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusNoContent, nil)
+	}
+}
+func addCollaboratorHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.AddCollaborator == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "playlist service unavailable"})
+			return
+		}
+
+		playlistID := chi.URLParam(r, "playlist_id")
+		ownerID := middleware.GetUserID(r.Context())
+
+		var body struct {
+			CollaboratorID string `json:"collaborator_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.CollaboratorID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "collaborator_id is required"})
+			return
+		}
+
+		if err := c.AddCollaborator(r.Context(), playlistID, ownerID, body.CollaboratorID); err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "collaborator added"})
 	}
 }
 
