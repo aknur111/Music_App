@@ -1,0 +1,4 @@
+- [Music App Project Context](project_music_app.md) — Go microservices course project, scaffolded structure, 17 gRPC endpoints, proto/service wiring status
+- [Observability & Admin Stack](project_observability.md) — Prometheus/Grafana/Loki status, admin roles, dashboard UIDs, known quirks (as of 2026-05-08, fully verified)
+- [Frontend UX Fixes](project_frontend_fixes.md) — 11 UX issues fixed May 2026: nav routing, search, player prev/next, favorites store, Jamendo stats, notifications panel
+- [Payment System Architecture](project_payment_system.md) — Provider-based payment/subscription built May 2026: Halyk ePay + local dev, gRPC, 3 plans, full flow wired
