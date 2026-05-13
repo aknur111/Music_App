@@ -43,11 +43,24 @@ func (s *Server) GetPlaylist(ctx context.Context, req *pb.GetPlaylistRequest) (*
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	var pbSongs []*pb.PlaylistSong
+	for _, s := range p.Songs {
+		pbSongs = append(pbSongs, &pb.PlaylistSong{
+			SongId:    s.SongID,
+			Title:     s.Title,
+			Artist:    s.Artist,
+			CoverUrl:  s.CoverURL,
+			AudioUrl:  s.AudioURL,
+			DurationS: int32(s.DurationS),
+			Position:  int32(s.Position),
+		})
+	}
 	return &pb.Playlist{
 		Id:          p.ID,
 		UserId:      p.UserID,
 		Name:        p.Name,
 		Description: p.Description,
+		Songs:       pbSongs,
 		SongCount:   int32(p.SongCount),
 		CreatedAt:   p.CreatedAt.Unix(),
 		UpdatedAt:   p.UpdatedAt.Unix(),
@@ -84,7 +97,10 @@ func (s *Server) ListUserPlaylists(ctx context.Context, req *pb.ListUserPlaylist
 }
 
 func (s *Server) AddSongToPlaylist(ctx context.Context, req *pb.AddSongRequest) (*pb.AddSongResponse, error) {
-	position, err := s.uc.AddSongToPlaylist(ctx, req.PlaylistId, req.SongId, req.UserId)
+	position, err := s.uc.AddSongToPlaylist(
+		ctx, req.PlaylistId, req.SongId, req.UserId,
+		req.Title, req.Artist, req.CoverUrl, req.AudioUrl, int(req.DurationS),
+	)
 	if err != nil {
 		if err == usecase.ErrNotFound {
 			return nil, status.Error(codes.NotFound, "playlist not found")

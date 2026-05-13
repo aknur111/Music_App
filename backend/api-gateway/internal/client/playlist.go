@@ -38,11 +38,16 @@ func (c *PlaylistClient) ListPlaylists(ctx context.Context, userID string, page,
 	})
 }
 
-func (c *PlaylistClient) AddSong(ctx context.Context, playlistID, songID, userID string) (int, error) {
+func (c *PlaylistClient) AddSong(ctx context.Context, playlistID, songID, userID, title, artist, coverURL, audioURL string, durationS int) (int, error) {
 	resp, err := c.grpc.AddSongToPlaylist(ctx, &playlistpb.AddSongRequest{
 		PlaylistId: playlistID,
 		SongId:     songID,
 		UserId:     userID,
+		Title:      title,
+		Artist:     artist,
+		CoverUrl:   coverURL,
+		AudioUrl:   audioURL,
+		DurationS:  int32(durationS),
 	})
 	if err != nil {
 		return 0, err

@@ -84,7 +84,7 @@ func TestAddSong_PlaylistNotFound(t *testing.T) {
 	repo.On("GetByID", mock.Anything, "pl-1", "user-1").Return(nil, nil)
 
 	uc := usecase.NewPlaylistUsecase(repo, cache, pub)
-	_, err := uc.AddSongToPlaylist(context.Background(), "pl-1", "song-1", "user-1")
+	_, err := uc.AddSongToPlaylist(context.Background(), "pl-1", "song-1", "user-1", "", "", "", "", 0)
 
 	assert.ErrorIs(t, err, usecase.ErrNotFound)
 }
@@ -101,7 +101,7 @@ func TestAddSong_Success(t *testing.T) {
 	pub.On("PublishSongAdded", mock.Anything, "pl-1", "song-1", "user-1", "Favs").Return(nil)
 
 	uc := usecase.NewPlaylistUsecase(repo, cache, pub)
-	pos, err := uc.AddSongToPlaylist(context.Background(), "pl-1", "song-1", "user-1")
+	pos, err := uc.AddSongToPlaylist(context.Background(), "pl-1", "song-1", "user-1", "", "", "", "", 0)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, pos)

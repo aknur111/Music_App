@@ -31,7 +31,7 @@ type Clients struct {
 	CreatePlaylist func(ctx context.Context, userID, name, desc string) (interface{}, error)
 	GetPlaylist    func(ctx context.Context, id, userID string) (interface{}, error)
 	ListPlaylists  func(ctx context.Context, userID string, page, limit int) (interface{}, error)
-	AddSong        func(ctx context.Context, playlistID, songID, userID string) (int, error)
+	AddSong        func(ctx context.Context, playlistID, songID, userID, title, artist, coverURL, audioURL string, durationS int) (int, error)
 	RemoveSong     func(ctx context.Context, playlistID, songID, userID string) error
 
 	GetRecommendationsByMood   func(ctx context.Context, mood string, limit int32) (interface{}, error)
@@ -542,13 +542,18 @@ func addSongHandler(c *Clients) http.HandlerFunc {
 		playlistID := chi.URLParam(r, "playlist_id")
 		userID := middleware.GetUserID(r.Context())
 		var body struct {
-			SongID string `json:"song_id"`
+			SongID    string `json:"song_id"`
+			Title     string `json:"title"`
+			Artist    string `json:"artist"`
+			CoverURL  string `json:"cover_url"`
+			AudioURL  string `json:"audio_url"`
+			DurationS int    `json:"duration_s"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.SongID == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "song_id is required"})
 			return
 		}
-		position, err := c.AddSong(r.Context(), playlistID, body.SongID, userID)
+		position, err := c.AddSong(r.Context(), playlistID, body.SongID, userID, body.Title, body.Artist, body.CoverURL, body.AudioURL, body.DurationS)
 		if err != nil {
 			writeGRPCError(w, err)
 			return
