@@ -11,9 +11,13 @@ import (
 )
 
 var (
-	ErrNotFound   = errors.New("not found")
-	ErrForbidden  = errors.New("forbidden")
+	ErrNotFound  = errors.New("not found")
+	ErrForbidden = errors.New("forbidden")
 )
+
+type MusicClient interface {
+	GetSong(ctx context.Context, songID string) (*entity.PlaylistSong, error) // Adjust return type based on your actual client
+}
 
 type EventPublisher interface {
 	PublishSongAdded(ctx context.Context, playlistID, songID, userID, playlistName string) error
@@ -27,16 +31,18 @@ type PlaylistUsecase interface {
 	RemoveSongFromPlaylist(ctx context.Context, playlistID, songID, userID string) error
 	UpdatePlaylist(ctx context.Context, id, userID, name, description string) (*entity.Playlist, error)
 	DeletePlaylist(ctx context.Context, id, userID string) error
+	AddCollaborator(ctx context.Context, playlistID, ownerID, collaboratorID string) error
 }
 
 type playlistUsecase struct {
-	repo      repository.PlaylistRepository
-	cache     repository.PlaylistCache
-	publisher EventPublisher
+	repo        repository.PlaylistRepository
+	cache       repository.PlaylistCache
+	publisher   EventPublisher
+	musicClient MusicClient
 }
 
-func NewPlaylistUsecase(repo repository.PlaylistRepository, cache repository.PlaylistCache, publisher EventPublisher) PlaylistUsecase {
-	return &playlistUsecase{repo: repo, cache: cache, publisher: publisher}
+func NewPlaylistUsecase(repo repository.PlaylistRepository, cache repository.PlaylistCache, publisher EventPublisher, client MusicClient) PlaylistUsecase {
+	return &playlistUsecase{repo: repo, cache: cache, publisher: publisher, musicClient: client}
 }
 
 func (u *playlistUsecase) CreatePlaylist(ctx context.Context, userID, name, description string) (*entity.Playlist, error) {
@@ -88,15 +94,21 @@ func (u *playlistUsecase) AddSongToPlaylist(ctx context.Context, playlistID, son
 		return 0, ErrNotFound
 	}
 
+	song, err := u.musicClient.GetSong(ctx, songID)
+	if err != nil || song == nil {
+		return 0, errors.New("invalid song_id: song does not exist in music catalog")
+	}
+
 	ps := &entity.PlaylistSong{
 		PlaylistID: playlistID,
 		SongID:     songID,
-		Title:      title,
-		Artist:     artist,
-		CoverURL:   coverURL,
-		AudioURL:   audioURL,
-		DurationS:  durationS,
+		Title:      song.Title,
+		Artist:     song.Artist,
+		CoverURL:   song.CoverURL,
+		AudioURL:   song.AudioURL,
+		DurationS:  song.DurationS,
 	}
+
 	position, err := u.repo.AddSong(ctx, ps)
 	if err != nil {
 		return 0, err
@@ -124,6 +136,10 @@ func (u *playlistUsecase) UpdatePlaylist(ctx context.Context, id, userID, name, 
 	if err != nil || p == nil {
 		return nil, ErrNotFound
 	}
+	if p.UserID != userID {
+		return nil, ErrForbidden
+	}
+
 	if name != "" {
 		p.Name = name
 	}
@@ -141,9 +157,16 @@ func (u *playlistUsecase) DeletePlaylist(ctx context.Context, id, userID string)
 	if err != nil || p == nil {
 		return ErrNotFound
 	}
+	if p.UserID != userID {
+		return ErrForbidden
+	}
+
 	if err := u.repo.Delete(ctx, id, userID); err != nil {
 		return err
 	}
 	_ = u.cache.InvalidateUserPlaylists(ctx, userID)
 	return nil
+}
+func (u *playlistUsecase) AddCollaborator(ctx context.Context, playlistID, ownerID, collaboratorID string) error {
+	return u.repo.AddCollaborator(ctx, playlistID, ownerID, collaboratorID)
 }

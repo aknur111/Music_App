@@ -2,15 +2,15 @@ syntax = "proto3";
 
 package playlist;
 
-option go_package = "github.com/music-app/playlist-service/gen/playlist;playlist";
+option go_package = "github.com/NoneNon9/Music-app-protos/playlist;playlist";
 
 // ── Common models ─────────────────────────────────────────────────────────────
 
 message PlaylistSong {
-  string song_id   = 1;
-  string title     = 2;
-  string artist    = 3;
-  int32  position  = 4;
+  string song_id    = 1;
+  string title      = 2;
+  string artist     = 3;
+  int32  position   = 4;
   int32  duration_s = 5;
   string cover_url  = 6;
   string audio_url  = 7;
@@ -93,6 +93,16 @@ message DeletePlaylistResponse {
   bool success = 1;
 }
 
+message AddCollaboratorRequest {
+  string playlist_id = 1;
+  string owner_id = 2;
+  string collaborator_id = 3;
+}
+
+message AddCollaboratorResponse {
+  bool success = 1;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 service PlaylistService {
@@ -103,4 +113,5 @@ service PlaylistService {
   rpc RemoveSongFromPlaylist(RemoveSongRequest) returns (RemoveSongResponse);
   rpc UpdatePlaylist(UpdatePlaylistRequest) returns (Playlist);
   rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistResponse);
+  rpc AddCollaborator(AddCollaboratorRequest) returns (AddCollaboratorResponse);
 }

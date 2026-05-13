@@ -80,3 +80,12 @@ func (c *PlaylistClient) DeletePlaylist(ctx context.Context, playlistID, userID 
 	})
 	return err
 }
+
+func (c *PlaylistClient) AddCollaborator(ctx context.Context, playlistID, ownerID, collabID string) error {
+	_, err := c.grpc.AddCollaborator(ctx, &playlistpb.AddCollaboratorRequest{
+		PlaylistId:     playlistID,
+		OwnerId:        ownerID,
+		CollaboratorId: collabID,
+	})
+	return err
+}
