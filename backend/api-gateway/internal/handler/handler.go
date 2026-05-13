@@ -47,6 +47,15 @@ type Clients struct {
 	RateTrack                  func(ctx context.Context, userID, trackID string, rating int32) error
 	GetMyWave                  func(ctx context.Context, userID, moodBias string, limit int32, excludeIDs []string) (interface{}, error)
 
+	UpdatePlaylist func(ctx context.Context, playlistID, userID, name, description string) (interface{}, error)
+	DeletePlaylist func(ctx context.Context, playlistID, userID string) error
+
+	GetPlans          func(ctx context.Context) (interface{}, error)
+	CreateCheckout    func(ctx context.Context, userID, planSlug, returnURL, failURL string) (interface{}, error)
+	GetPayment        func(ctx context.Context, paymentID, userID string) (interface{}, error)
+	ListMyPayments    func(ctx context.Context, userID string) (interface{}, error)
+	GetMySubscription func(ctx context.Context, userID string) (interface{}, error)
+	HandleCallback    func(ctx context.Context, providerID, paymentID, providerRef string, success bool, rawBody string) (interface{}, error)
 	UpdatePlaylist  func(ctx context.Context, playlistID, userID, name, description string) (interface{}, error)
 	DeletePlaylist  func(ctx context.Context, playlistID, userID string) error
 	AddCollaborator func(ctx context.Context, playlistID, ownerID, collaboratorID string) error
@@ -115,7 +124,166 @@ func Router(clients *Clients) http.Handler {
 		r.Post("/upload", uploadSongHandler(clients))
 	})
 
+	// ── Payment endpoints ─────────────────────────────────────────────────────
+	r.Get("/api/v1/payments/plans", getPlansHandler(clients))
+	r.Post("/api/v1/payments/callback/{provider}", paymentCallbackHandler(clients))
+
+	r.Route("/api/v1/payments", func(r chi.Router) {
+		r.Use(authMw)
+		r.Post("/checkout", createCheckoutHandler(clients))
+		r.Get("/subscription", getMySubscriptionHandler(clients))
+		r.Get("/", listMyPaymentsHandler(clients))
+		r.Get("/{payment_id}", getPaymentHandler(clients))
+	})
+
 	return r
+}
+
+func getPlansHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetPlans == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment service unavailable"})
+			return
+		}
+		res, err := c.GetPlans(r.Context())
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	}
+}
+
+func createCheckoutHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.CreateCheckout == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment service unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		var req struct {
+			PlanSlug  string `json:"plan_slug"`
+			ReturnURL string `json:"return_url"`
+			FailURL   string `json:"fail_url"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			return
+		}
+		if req.PlanSlug == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "plan_slug is required"})
+			return
+		}
+		res, err := c.CreateCheckout(r.Context(), userID, req.PlanSlug, req.ReturnURL, req.FailURL)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, res)
+	}
+}
+
+func getPaymentHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetPayment == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment service unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		res, err := c.GetPayment(r.Context(), chi.URLParam(r, "payment_id"), userID)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	}
+}
+
+func listMyPaymentsHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.ListMyPayments == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment service unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		res, err := c.ListMyPayments(r.Context(), userID)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	}
+}
+
+func getMySubscriptionHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetMySubscription == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment service unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		res, err := c.GetMySubscription(r.Context(), userID)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	}
+}
+
+func paymentCallbackHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.HandleCallback == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment service unavailable"})
+			return
+		}
+		providerID := chi.URLParam(r, "provider")
+
+		var rawBody strings.Builder
+		var req struct {
+			PaymentID   string `json:"payment_id"`
+			ProviderRef string `json:"provider_ref"`
+			Success     bool   `json:"success"`
+			InvoiceID   string `json:"invoiceId"`
+			Status      string `json:"status"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			rawBodyBytes, _ := json.Marshal(req)
+			rawBody.Write(rawBodyBytes)
+		}
+
+		paymentID := req.PaymentID
+		if paymentID == "" {
+			paymentID = r.URL.Query().Get("payment_id")
+		}
+		providerRef := req.ProviderRef
+		if providerRef == "" {
+			providerRef = req.InvoiceID
+		}
+		if providerRef == "" {
+			providerRef = r.URL.Query().Get("provider_ref")
+		}
+		success := req.Success
+		if !success && req.Status != "" {
+			success = req.Status == "auth" || req.Status == "charge"
+		}
+		if !success {
+			successParam := r.URL.Query().Get("success")
+			success = successParam == "true" || successParam == "1"
+		}
+
+		if paymentID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "payment_id is required"})
+			return
+		}
+
+		_, err := c.HandleCallback(r.Context(), providerID, paymentID, providerRef, success, rawBody.String())
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}
 }
 
 func registerHandler(c *Clients) http.HandlerFunc {

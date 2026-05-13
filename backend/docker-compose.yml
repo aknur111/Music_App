@@ -84,6 +84,23 @@ services:
       retries: 20
     restart: unless-stopped
 
+  postgres-payment:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${PAYMENT_DB_NAME}
+    ports:
+      - "5438:5432"
+    volumes:
+      - postgres_payment_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${PAYMENT_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     ports:
@@ -240,6 +257,36 @@ services:
       - "50055:50055"
     restart: unless-stopped
 
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    image: backend-payment-service
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres-payment
+      PAYMENT_DB_PORT: "5432"
+      NATS_URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-local}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      HALYK_OAUTH_URL: ${HALYK_OAUTH_URL:-https://testoauth.homebank.kz/epay2/oauth2/token}
+      HALYK_API_URL: ${HALYK_API_URL:-https://testepay.homebank.kz}
+      HALYK_PORTAL_URL: ${HALYK_PORTAL_URL:-https://test-epay.homebank.kz}
+      HALYK_CLIENT_ID: ${HALYK_CLIENT_ID:-}
+      HALYK_CLIENT_SECRET: ${HALYK_CLIENT_SECRET:-}
+      HALYK_TERMINAL_ID: ${HALYK_TERMINAL_ID:-}
+      HALYK_CALLBACK_URL: ${HALYK_CALLBACK_URL:-}
+    depends_on:
+      postgres-payment:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    ports:
+      - "50056:50056"
+    restart: unless-stopped
+
   api-gateway:
     build:
       context: .
@@ -252,6 +299,7 @@ services:
       MUSIC_SERVICE_ADDR: music-service:50052
       PLAYLIST_SERVICE_ADDR: playlist-service:50053
       RECOMMENDATION_SERVICE_ADDR: recommendation-service:50055
+      PAYMENT_SERVICE_ADDR: payment-service:50056
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
@@ -263,6 +311,8 @@ services:
       playlist-service:
         condition: service_started
       recommendation-service:
+        condition: service_started
+      payment-service:
         condition: service_started
       redis:
         condition: service_healthy
@@ -316,5 +366,6 @@ volumes:
   postgres_playlist_data:
   postgres_notification_data:
   postgres_recommendation_data:
+  postgres_payment_data:
   redis_data:
   grafana_data:

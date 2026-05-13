@@ -32,6 +32,11 @@ const MoodDetailPage       = lazy(() => import('@/pages/app/MoodDetailPage'))
 const WavePage             = lazy(() => import('@/pages/app/WavePage'))
 
 
+const PremiumPage        = lazy(() => import('@/pages/app/PremiumPage'))
+const BillingSuccessPage = lazy(() => import('@/pages/billing/SuccessPage'))
+const BillingFailurePage = lazy(() => import('@/pages/billing/FailurePage'))
+const DevCheckoutPage    = lazy(() => import('@/pages/billing/DevCheckoutPage'))
+
 const AdminOverviewPage  = lazy(() => import('@/pages/admin/AdminOverviewPage'))
 const UserAnalyticsPage  = lazy(() => import('@/pages/admin/UserAnalyticsPage'))
 const TrackAnalyticsPage = lazy(() => import('@/pages/admin/TrackAnalyticsPage'))
@@ -103,6 +108,18 @@ export const router = createBrowserRouter([
     path: '/reset-password',
     element: <PageSuspense><ResetPasswordPage /></PageSuspense>,
   },
+  {
+    path: '/billing/success',
+    element: <PageSuspense><BillingSuccessPage /></PageSuspense>,
+  },
+  {
+    path: '/billing/failure',
+    element: <PageSuspense><BillingFailurePage /></PageSuspense>,
+  },
+  {
+    path: '/billing/dev-checkout',
+    element: <PageSuspense><DevCheckoutPage /></PageSuspense>,
+  },
 
   {
     element: (
@@ -158,6 +175,10 @@ export const router = createBrowserRouter([
       {
         path: '/profile',
         element: <PageSuspense><ProfilePage /></PageSuspense>,
+      },
+      {
+        path: '/premium',
+        element: <PageSuspense><PremiumPage /></PageSuspense>,
       },
       {
         path: '/wave',

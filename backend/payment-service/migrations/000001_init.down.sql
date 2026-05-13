@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS payment_attempts;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS plans;

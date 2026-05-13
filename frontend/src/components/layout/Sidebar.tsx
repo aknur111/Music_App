@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ListMusic,
+  Zap,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/store/authStore';
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Albums',    icon: Disc3,   path: '/albums' },
   { label: 'Library',   icon: Library, path: '/library' },
   { label: 'Favorites', icon: Heart,   path: '/favorites' },
+  { label: 'Premium',   icon: Zap,     path: '/premium' },
 ];
 
 export const Sidebar: React.FC = () => {

@@ -6,6 +6,7 @@ require (
 	github.com/NoneNon9/Music-app-gen v1.1.0
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/music-app/auth-service v0.0.0
+	github.com/music-app/payment-service v0.0.0
 	github.com/music-app/playlist-service v0.0.0
 	github.com/music-app/recommendation-service v0.0.0
 	github.com/prometheus/client_golang v1.20.5
@@ -17,6 +18,8 @@ require (
 replace github.com/music-app/auth-service => ../auth-service
 
 replace github.com/music-app/music-service => ../music-service
+
+replace github.com/music-app/payment-service => ../payment-service
 
 replace github.com/music-app/playlist-service => ../playlist-service
 
