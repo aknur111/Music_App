@@ -5,7 +5,7 @@ import { PlaylistService } from '@/services/playlist.service';
 import type { Playlist } from '@/types';
 import {
   Home,
-  Sparkles,
+  Radio,
   Music,
   Mic2,
   Disc3,
@@ -29,13 +29,13 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', icon: Home, path: '/home' },
-  { label: 'Discover', icon: Sparkles, path: '/discover/moods' },
-  { label: 'Tracks', icon: Music, path: '/tracks' },
-  { label: 'Artists', icon: Mic2, path: '/artists' },
-  { label: 'Albums', icon: Disc3, path: '/albums' },
-  { label: 'Library', icon: Library, path: '/library' },
-  { label: 'Favorites', icon: Heart, path: '/favorites' },
+  { label: 'Home',      icon: Home,    path: '/home' },
+  { label: 'My Wave',   icon: Radio,   path: '/wave' },
+  { label: 'Tracks',    icon: Music,   path: '/tracks' },
+  { label: 'Artists',   icon: Mic2,    path: '/artists' },
+  { label: 'Albums',    icon: Disc3,   path: '/albums' },
+  { label: 'Library',   icon: Library, path: '/library' },
+  { label: 'Favorites', icon: Heart,   path: '/favorites' },
 ];
 
 export const Sidebar: React.FC = () => {

@@ -72,6 +72,13 @@ message RateTrackResponse {
   bool success = 1;
 }
 
+message WaveRequest {
+  string user_id        = 1;
+  string mood_bias      = 2;  // optional: "happy"|"chill"|etc — blended 40% into profile vector
+  int32  limit          = 3;  // default 30
+  repeated string exclude_ids = 4;  // recently played track IDs to skip
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 service RecommendationService {
@@ -82,4 +89,5 @@ service RecommendationService {
   rpc RecordPlayback(PlaybackRequest) returns (PlaybackResponse);
   rpc GetTrendingTracks(TrendingRequest) returns (TracksResponse);
   rpc RateTrack(RateTrackRequest) returns (RateTrackResponse);
+  rpc GetMyWave(WaveRequest) returns (TracksResponse);
 }

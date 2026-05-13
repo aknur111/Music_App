@@ -108,6 +108,7 @@ func main() {
 		RecordPlayback:             recommClient.RecordPlayback,
 		GetTrendingTracks:          recommClient.GetTrending,
 		RateTrack:                  recommClient.RateTrack,
+		GetMyWave:                  recommClient.GetMyWave,
 
 		RefreshToken: func(ctx context.Context, refreshToken string) (string, string, int64, error) {
 			resp, err := authClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{

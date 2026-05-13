@@ -26,6 +26,7 @@ const (
 	RecommendationService_RecordPlayback_FullMethodName             = "/recommendation.RecommendationService/RecordPlayback"
 	RecommendationService_GetTrendingTracks_FullMethodName          = "/recommendation.RecommendationService/GetTrendingTracks"
 	RecommendationService_RateTrack_FullMethodName                  = "/recommendation.RecommendationService/RateTrack"
+	RecommendationService_GetMyWave_FullMethodName                  = "/recommendation.RecommendationService/GetMyWave"
 )
 
 // RecommendationServiceClient is the client API for RecommendationService service.
@@ -39,6 +40,7 @@ type RecommendationServiceClient interface {
 	RecordPlayback(ctx context.Context, in *PlaybackRequest, opts ...grpc.CallOption) (*PlaybackResponse, error)
 	GetTrendingTracks(ctx context.Context, in *TrendingRequest, opts ...grpc.CallOption) (*TracksResponse, error)
 	RateTrack(ctx context.Context, in *RateTrackRequest, opts ...grpc.CallOption) (*RateTrackResponse, error)
+	GetMyWave(ctx context.Context, in *WaveRequest, opts ...grpc.CallOption) (*TracksResponse, error)
 }
 
 type recommendationServiceClient struct {
@@ -119,6 +121,16 @@ func (c *recommendationServiceClient) RateTrack(ctx context.Context, in *RateTra
 	return out, nil
 }
 
+func (c *recommendationServiceClient) GetMyWave(ctx context.Context, in *WaveRequest, opts ...grpc.CallOption) (*TracksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TracksResponse)
+	err := c.cc.Invoke(ctx, RecommendationService_GetMyWave_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RecommendationServiceServer is the server API for RecommendationService service.
 // All implementations must embed UnimplementedRecommendationServiceServer
 // for forward compatibility.
@@ -130,6 +142,7 @@ type RecommendationServiceServer interface {
 	RecordPlayback(context.Context, *PlaybackRequest) (*PlaybackResponse, error)
 	GetTrendingTracks(context.Context, *TrendingRequest) (*TracksResponse, error)
 	RateTrack(context.Context, *RateTrackRequest) (*RateTrackResponse, error)
+	GetMyWave(context.Context, *WaveRequest) (*TracksResponse, error)
 	mustEmbedUnimplementedRecommendationServiceServer()
 }
 
@@ -160,6 +173,9 @@ func (UnimplementedRecommendationServiceServer) GetTrendingTracks(context.Contex
 }
 func (UnimplementedRecommendationServiceServer) RateTrack(context.Context, *RateTrackRequest) (*RateTrackResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RateTrack not implemented")
+}
+func (UnimplementedRecommendationServiceServer) GetMyWave(context.Context, *WaveRequest) (*TracksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMyWave not implemented")
 }
 func (UnimplementedRecommendationServiceServer) mustEmbedUnimplementedRecommendationServiceServer() {}
 func (UnimplementedRecommendationServiceServer) testEmbeddedByValue()                               {}
@@ -308,6 +324,24 @@ func _RecommendationService_RateTrack_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RecommendationService_GetMyWave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WaveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecommendationServiceServer).GetMyWave(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RecommendationService_GetMyWave_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecommendationServiceServer).GetMyWave(ctx, req.(*WaveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RecommendationService_ServiceDesc is the grpc.ServiceDesc for RecommendationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -342,6 +376,10 @@ var RecommendationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RateTrack",
 			Handler:    _RecommendationService_RateTrack_Handler,
+		},
+		{
+			MethodName: "GetMyWave",
+			Handler:    _RecommendationService_GetMyWave_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

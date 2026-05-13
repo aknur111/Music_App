@@ -150,3 +150,19 @@ func (s *Server) RateTrack(ctx context.Context, req *pb.RateTrackRequest) (*pb.R
 	}
 	return &pb.RateTrackResponse{Success: true}, nil
 }
+
+// GetMyWave returns a personalised queue blending user taste profile with an optional mood bias.
+func (s *Server) GetMyWave(ctx context.Context, req *pb.WaveRequest) (*pb.TracksResponse, error) {
+	if req.UserId == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+	limit := int(req.Limit)
+	if limit <= 0 {
+		limit = 30
+	}
+	tracks, err := s.uc.GetMyWave(ctx, req.UserId, req.MoodBias, limit, req.ExcludeIds)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return tracksToProto(tracks), nil
+}
