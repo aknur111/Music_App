@@ -68,3 +68,16 @@ func (c *RecommendationClient) RateTrack(ctx context.Context, userID, trackID st
 	})
 	return err
 }
+
+func (c *RecommendationClient) GetMyWave(ctx context.Context, userID, moodBias string, limit int32, excludeIDs []string) (interface{}, error) {
+	resp, err := c.grpc.GetMyWave(ctx, &recommpb.WaveRequest{
+		UserId:     userID,
+		MoodBias:   moodBias,
+		Limit:      limit,
+		ExcludeIds: excludeIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetTracks(), nil
+}

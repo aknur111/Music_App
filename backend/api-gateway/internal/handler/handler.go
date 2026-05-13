@@ -41,6 +41,7 @@ type Clients struct {
 	RecordPlayback             func(ctx context.Context, userID, trackID string) error
 	GetTrendingTracks          func(ctx context.Context, limit int32) (interface{}, error)
 	RateTrack                  func(ctx context.Context, userID, trackID string, rating int32) error
+	GetMyWave                  func(ctx context.Context, userID, moodBias string, limit int32, excludeIDs []string) (interface{}, error)
 
 	UpdatePlaylist func(ctx context.Context, playlistID, userID, name, description string) (interface{}, error)
 	DeletePlaylist func(ctx context.Context, playlistID, userID string) error
@@ -89,6 +90,7 @@ func Router(clients *Clients) http.Handler {
 		r.Post("/playback", recordPlaybackHandler(clients))
 		r.Get("/trending", trendingTracksHandler(clients))
 		r.Post("/rate", rateTrackHandler(clients))
+		r.Get("/wave", myWaveHandler(clients))
 	})
 
 	return r
@@ -659,5 +661,35 @@ func rateTrackHandler(c *Clients) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "rated"})
+	}
+}
+
+func myWaveHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.GetMyWave == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "recommendations unavailable"})
+			return
+		}
+		userID := middleware.GetUserID(r.Context())
+		moodBias := r.URL.Query().Get("mood")
+		limit := int32(parseLimit(r, 30))
+
+		// parse comma-separated exclude list
+		excludeParam := r.URL.Query().Get("exclude")
+		var excludeIDs []string
+		if excludeParam != "" {
+			for _, id := range strings.Split(excludeParam, ",") {
+				if id != "" {
+					excludeIDs = append(excludeIDs, id)
+				}
+			}
+		}
+
+		tracks, err := c.GetMyWave(r.Context(), userID, moodBias, limit, excludeIDs)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"tracks": tracks})
 	}
 }
