@@ -681,6 +681,74 @@ func (x *RateTrackResponse) GetSuccess() bool {
 	return false
 }
 
+type WaveRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	MoodBias      string                 `protobuf:"bytes,2,opt,name=mood_bias,json=moodBias,proto3" json:"mood_bias,omitempty"`       // optional: "happy"|"chill"|etc — blended 40% into profile vector
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`                            // default 30
+	ExcludeIds    []string               `protobuf:"bytes,4,rep,name=exclude_ids,json=excludeIds,proto3" json:"exclude_ids,omitempty"` // recently played track IDs to skip
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WaveRequest) Reset() {
+	*x = WaveRequest{}
+	mi := &file_recommendation_recommendation_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WaveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WaveRequest) ProtoMessage() {}
+
+func (x *WaveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_recommendation_recommendation_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WaveRequest.ProtoReflect.Descriptor instead.
+func (*WaveRequest) Descriptor() ([]byte, []int) {
+	return file_recommendation_recommendation_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *WaveRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *WaveRequest) GetMoodBias() string {
+	if x != nil {
+		return x.MoodBias
+	}
+	return ""
+}
+
+func (x *WaveRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *WaveRequest) GetExcludeIds() []string {
+	if x != nil {
+		return x.ExcludeIds
+	}
+	return nil
+}
+
 var File_recommendation_recommendation_proto protoreflect.FileDescriptor
 
 const file_recommendation_recommendation_proto_rawDesc = "" +
@@ -736,7 +804,13 @@ const file_recommendation_recommendation_proto_rawDesc = "" +
 	"\btrack_id\x18\x02 \x01(\tR\atrackId\x12\x16\n" +
 	"\x06rating\x18\x03 \x01(\x05R\x06rating\"-\n" +
 	"\x11RateTrackResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\xf2\x04\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"z\n" +
+	"\vWaveRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
+	"\tmood_bias\x18\x02 \x01(\tR\bmoodBias\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1f\n" +
+	"\vexclude_ids\x18\x04 \x03(\tR\n" +
+	"excludeIds2\xbc\x05\n" +
 	"\x15RecommendationService\x12W\n" +
 	"\x18GetRecommendationsByMood\x12\x1b.recommendation.MoodRequest\x1a\x1e.recommendation.TracksResponse\x12R\n" +
 	"\x10GetSimilarTracks\x12\x1e.recommendation.SimilarRequest\x1a\x1e.recommendation.TracksResponse\x12]\n" +
@@ -744,7 +818,8 @@ const file_recommendation_recommendation_proto_rawDesc = "" +
 	"\fGetMoodRadio\x12 .recommendation.MoodRadioRequest\x1a\x1e.recommendation.TracksResponse\x12S\n" +
 	"\x0eRecordPlayback\x12\x1f.recommendation.PlaybackRequest\x1a .recommendation.PlaybackResponse\x12T\n" +
 	"\x11GetTrendingTracks\x12\x1f.recommendation.TrendingRequest\x1a\x1e.recommendation.TracksResponse\x12P\n" +
-	"\tRateTrack\x12 .recommendation.RateTrackRequest\x1a!.recommendation.RateTrackResponseBOZMgithub.com/music-app/recommendation-service/gen/recommendation;recommendationb\x06proto3"
+	"\tRateTrack\x12 .recommendation.RateTrackRequest\x1a!.recommendation.RateTrackResponse\x12H\n" +
+	"\tGetMyWave\x12\x1b.recommendation.WaveRequest\x1a\x1e.recommendation.TracksResponseBOZMgithub.com/music-app/recommendation-service/gen/recommendation;recommendationb\x06proto3"
 
 var (
 	file_recommendation_recommendation_proto_rawDescOnce sync.Once
@@ -758,7 +833,7 @@ func file_recommendation_recommendation_proto_rawDescGZIP() []byte {
 	return file_recommendation_recommendation_proto_rawDescData
 }
 
-var file_recommendation_recommendation_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_recommendation_recommendation_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_recommendation_recommendation_proto_goTypes = []any{
 	(*TrackProto)(nil),        // 0: recommendation.TrackProto
 	(*MoodRequest)(nil),       // 1: recommendation.MoodRequest
@@ -771,6 +846,7 @@ var file_recommendation_recommendation_proto_goTypes = []any{
 	(*TrendingRequest)(nil),   // 8: recommendation.TrendingRequest
 	(*RateTrackRequest)(nil),  // 9: recommendation.RateTrackRequest
 	(*RateTrackResponse)(nil), // 10: recommendation.RateTrackResponse
+	(*WaveRequest)(nil),       // 11: recommendation.WaveRequest
 }
 var file_recommendation_recommendation_proto_depIdxs = []int32{
 	0,  // 0: recommendation.TracksResponse.tracks:type_name -> recommendation.TrackProto
@@ -781,15 +857,17 @@ var file_recommendation_recommendation_proto_depIdxs = []int32{
 	5,  // 5: recommendation.RecommendationService.RecordPlayback:input_type -> recommendation.PlaybackRequest
 	8,  // 6: recommendation.RecommendationService.GetTrendingTracks:input_type -> recommendation.TrendingRequest
 	9,  // 7: recommendation.RecommendationService.RateTrack:input_type -> recommendation.RateTrackRequest
-	6,  // 8: recommendation.RecommendationService.GetRecommendationsByMood:output_type -> recommendation.TracksResponse
-	6,  // 9: recommendation.RecommendationService.GetSimilarTracks:output_type -> recommendation.TracksResponse
-	6,  // 10: recommendation.RecommendationService.GetPersonalRecommendations:output_type -> recommendation.TracksResponse
-	6,  // 11: recommendation.RecommendationService.GetMoodRadio:output_type -> recommendation.TracksResponse
-	7,  // 12: recommendation.RecommendationService.RecordPlayback:output_type -> recommendation.PlaybackResponse
-	6,  // 13: recommendation.RecommendationService.GetTrendingTracks:output_type -> recommendation.TracksResponse
-	10, // 14: recommendation.RecommendationService.RateTrack:output_type -> recommendation.RateTrackResponse
-	8,  // [8:15] is the sub-list for method output_type
-	1,  // [1:8] is the sub-list for method input_type
+	11, // 8: recommendation.RecommendationService.GetMyWave:input_type -> recommendation.WaveRequest
+	6,  // 9: recommendation.RecommendationService.GetRecommendationsByMood:output_type -> recommendation.TracksResponse
+	6,  // 10: recommendation.RecommendationService.GetSimilarTracks:output_type -> recommendation.TracksResponse
+	6,  // 11: recommendation.RecommendationService.GetPersonalRecommendations:output_type -> recommendation.TracksResponse
+	6,  // 12: recommendation.RecommendationService.GetMoodRadio:output_type -> recommendation.TracksResponse
+	7,  // 13: recommendation.RecommendationService.RecordPlayback:output_type -> recommendation.PlaybackResponse
+	6,  // 14: recommendation.RecommendationService.GetTrendingTracks:output_type -> recommendation.TracksResponse
+	10, // 15: recommendation.RecommendationService.RateTrack:output_type -> recommendation.RateTrackResponse
+	6,  // 16: recommendation.RecommendationService.GetMyWave:output_type -> recommendation.TracksResponse
+	9,  // [9:17] is the sub-list for method output_type
+	1,  // [1:9] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -806,7 +884,7 @@ func file_recommendation_recommendation_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_recommendation_recommendation_proto_rawDesc), len(file_recommendation_recommendation_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

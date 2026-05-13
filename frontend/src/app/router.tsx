@@ -29,6 +29,7 @@ const FavoritesPage    = lazy(() => import('@/pages/app/FavoritesPage'))
 const ProfilePage          = lazy(() => import('@/pages/app/ProfilePage'))
 const DiscoverMoodsPage    = lazy(() => import('@/pages/app/DiscoverMoodsPage'))
 const MoodDetailPage       = lazy(() => import('@/pages/app/MoodDetailPage'))
+const WavePage             = lazy(() => import('@/pages/app/WavePage'))
 
 
 const AdminOverviewPage  = lazy(() => import('@/pages/admin/AdminOverviewPage'))
@@ -157,6 +158,10 @@ export const router = createBrowserRouter([
       {
         path: '/profile',
         element: <PageSuspense><ProfilePage /></PageSuspense>,
+      },
+      {
+        path: '/wave',
+        element: <PageSuspense><WavePage /></PageSuspense>,
       },
     ],
   },

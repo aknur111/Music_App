@@ -52,7 +52,8 @@ async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
   }
 
   try {
-    const hits = await fetchTracks({ search: raw.name, limit: 1 })
+    const firstArtist = raw.artists.split(',')[0].trim()
+    const hits = await fetchTracks({ search: `${firstArtist} ${raw.name}`, limit: 1 })
     if (hits.length > 0) {
       track.coverUrl = hits[0].image
       // Use Jamendo audio only as fallback when backend has no iTunes preview URL
@@ -128,6 +129,17 @@ export const RecommendationService = {
       track_id: trackId,
       rating,
     })
+  },
+
+  async getMyWave(moodBias = '', limit = 30, excludeIds: string[] = []): Promise<Track[]> {
+    const params: Record<string, unknown> = { limit }
+    if (moodBias) params.mood = moodBias
+    if (excludeIds.length > 0) params.exclude = excludeIds.join(',')
+    const data = await get<{ tracks: RecommendTrackRaw[] }>(
+      '/api/v1/recommendations/wave',
+      params,
+    )
+    return enrichAll(data.tracks ?? [])
   },
 }
 
