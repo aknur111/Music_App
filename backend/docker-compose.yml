@@ -251,6 +251,7 @@ services:
       AUTH_SERVICE_ADDR: auth-service:50051
       MUSIC_SERVICE_ADDR: music-service:50052
       PLAYLIST_SERVICE_ADDR: playlist-service:50053
+      RECOMMENDATION_SERVICE_ADDR: recommendation-service:50055
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
@@ -260,6 +261,8 @@ services:
       music-service:
         condition: service_started
       playlist-service:
+        condition: service_started
+      recommendation-service:
         condition: service_started
       redis:
         condition: service_healthy

@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
 	"github.com/music-app/playlist-service/internal/domain/entity"
 	"github.com/music-app/playlist-service/internal/usecase"
 )
@@ -61,25 +60,17 @@ func (m *mockPublisher) PublishSongAdded(ctx context.Context, playlistID, songID
 	return m.Called(ctx, playlistID, songID, userID, name).Error(0)
 }
 
-type mockMusicClient struct{ mock.Mock }
-
-func (m *mockMusicClient) SongExists(ctx context.Context, songID string) (bool, error) {
-	args := m.Called(ctx, songID)
-	return args.Bool(0), args.Error(1)
-}
-
 func TestCreatePlaylist_Success(t *testing.T) {
 	repo := new(mockPlaylistRepo)
 	cache := new(mockPlaylistCache)
 	pub := new(mockPublisher)
-	music := new(mockMusicClient)
 
 	repo.On("Create", mock.Anything, mock.AnythingOfType("*entity.Playlist")).Return(nil)
 	cache.On("InvalidateUserPlaylists", mock.Anything, "user-1").Return(nil)
 
-	uc := usecase.NewPlaylistUsecase(repo, cache, pub, music)
-
+	uc := usecase.NewPlaylistUsecase(repo, cache, pub)
 	p, err := uc.CreatePlaylist(context.Background(), "user-1", "My Playlist", "desc")
+
 	assert.NoError(t, err)
 	assert.NotEmpty(t, p.ID)
 	assert.Equal(t, "My Playlist", p.Name)
@@ -89,48 +80,29 @@ func TestAddSong_PlaylistNotFound(t *testing.T) {
 	repo := new(mockPlaylistRepo)
 	cache := new(mockPlaylistCache)
 	pub := new(mockPublisher)
-	music := new(mockMusicClient)
 
 	repo.On("GetByID", mock.Anything, "pl-1", "user-1").Return(nil, nil)
 
-	uc := usecase.NewPlaylistUsecase(repo, cache, pub, music)
+	uc := usecase.NewPlaylistUsecase(repo, cache, pub)
+	_, err := uc.AddSongToPlaylist(context.Background(), "pl-1", "song-1", "user-1", "", "", "", "", 0)
 
-	_, err := uc.AddSongToPlaylist(context.Background(), "pl-1", "song-1", "user-1")
 	assert.ErrorIs(t, err, usecase.ErrNotFound)
-}
-
-func TestAddSong_InvalidSong(t *testing.T) {
-	repo := new(mockPlaylistRepo)
-	cache := new(mockPlaylistCache)
-	pub := new(mockPublisher)
-	music := new(mockMusicClient)
-
-	pl := &entity.Playlist{ID: "pl-1", UserID: "user-1", Name: "Favs"}
-	repo.On("GetByID", mock.Anything, "pl-1", "user-1").Return(pl, nil)
-	music.On("SongExists", mock.Anything, "song-1").Return(false, nil)
-
-	uc := usecase.NewPlaylistUsecase(repo, cache, pub, music)
-
-	_, err := uc.AddSongToPlaylist(context.Background(), "pl-1", "song-1", "user-1")
-	assert.ErrorIs(t, err, usecase.ErrInvalidSong)
 }
 
 func TestAddSong_Success(t *testing.T) {
 	repo := new(mockPlaylistRepo)
 	cache := new(mockPlaylistCache)
 	pub := new(mockPublisher)
-	music := new(mockMusicClient)
 
 	pl := &entity.Playlist{ID: "pl-1", UserID: "user-1", Name: "Favs"}
 	repo.On("GetByID", mock.Anything, "pl-1", "user-1").Return(pl, nil)
-	music.On("SongExists", mock.Anything, "song-1").Return(true, nil)
 	repo.On("AddSong", mock.Anything, mock.AnythingOfType("*entity.PlaylistSong")).Return(1, nil)
 	cache.On("InvalidateUserPlaylists", mock.Anything, "user-1").Return(nil)
 	pub.On("PublishSongAdded", mock.Anything, "pl-1", "song-1", "user-1", "Favs").Return(nil)
 
-	uc := usecase.NewPlaylistUsecase(repo, cache, pub, music)
+	uc := usecase.NewPlaylistUsecase(repo, cache, pub)
+	pos, err := uc.AddSongToPlaylist(context.Background(), "pl-1", "song-1", "user-1", "", "", "", "", 0)
 
-	pos, err := uc.AddSongToPlaylist(context.Background(), "pl-1", "song-1", "user-1")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, pos)
 }

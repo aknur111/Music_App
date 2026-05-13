@@ -53,9 +53,8 @@ func main() {
 	defer recommConn.Close()
 
 	recommClient := client.NewRecommendationClient(recommConn)
-
-	_ = musicConn
-	_ = playlistConn
+	musicClient := client.NewMusicClient(musicConn)
+	playlistClient := client.NewPlaylistClient(playlistConn)
 
 	authClient := authpb.NewAuthServiceClient(authConn)
 
@@ -88,11 +87,28 @@ func main() {
 			return err
 		},
 
+		GetSong:    musicClient.GetSong,
+		ListSongs:  musicClient.ListSongs,
+		SearchSongs: musicClient.SearchSongs,
+		GetAlbum:   musicClient.GetAlbum,
+		ListAlbums: musicClient.ListAlbums,
+
+		CreatePlaylist: playlistClient.CreatePlaylist,
+		GetPlaylist:    playlistClient.GetPlaylist,
+		ListPlaylists:  playlistClient.ListPlaylists,
+		AddSong:        playlistClient.AddSong,
+		RemoveSong:     playlistClient.RemoveSong,
+		UpdatePlaylist: playlistClient.UpdatePlaylist,
+		DeletePlaylist: playlistClient.DeletePlaylist,
+
 		GetRecommendationsByMood:   recommClient.GetByMood,
 		GetMoodRadio:               recommClient.GetMoodRadio,
 		GetSimilarTracks:           recommClient.GetSimilar,
 		GetPersonalRecommendations: recommClient.GetPersonal,
 		RecordPlayback:             recommClient.RecordPlayback,
+		GetTrendingTracks:          recommClient.GetTrending,
+		RateTrack:                  recommClient.RateTrack,
+		GetMyWave:                  recommClient.GetMyWave,
 
 		RefreshToken: func(ctx context.Context, refreshToken string) (string, string, int64, error) {
 			resp, err := authClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{

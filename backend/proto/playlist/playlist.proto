@@ -12,6 +12,8 @@ message PlaylistSong {
   string artist    = 3;
   int32  position  = 4;
   int32  duration_s = 5;
+  string cover_url  = 6;
+  string audio_url  = 7;
 }
 
 message Playlist {
@@ -53,6 +55,11 @@ message AddSongRequest {
   string playlist_id = 1;
   string song_id     = 2;
   string user_id     = 3;
+  string title       = 4;
+  string artist      = 5;
+  string cover_url   = 6;
+  string audio_url   = 7;
+  int32  duration_s  = 8;
 }
 
 message AddSongResponse {
@@ -70,17 +77,30 @@ message RemoveSongResponse {
   bool success = 1;
 }
 
+message UpdatePlaylistRequest {
+  string playlist_id  = 1;
+  string user_id      = 2;
+  string name         = 3;
+  string description  = 4;
+}
+
+message DeletePlaylistRequest {
+  string playlist_id = 1;
+  string user_id     = 2;
+}
+
+message DeletePlaylistResponse {
+  bool success = 1;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 service PlaylistService {
-  // endpoint 12
   rpc CreatePlaylist(CreatePlaylistRequest) returns (Playlist);
-  // endpoint 13
   rpc GetPlaylist(GetPlaylistRequest) returns (Playlist);
-  // endpoint 14
   rpc ListUserPlaylists(ListUserPlaylistsRequest) returns (ListUserPlaylistsResponse);
-  // endpoint 15
   rpc AddSongToPlaylist(AddSongRequest) returns (AddSongResponse);
-  // endpoint 16
   rpc RemoveSongFromPlaylist(RemoveSongRequest) returns (RemoveSongResponse);
+  rpc UpdatePlaylist(UpdatePlaylistRequest) returns (Playlist);
+  rpc DeletePlaylist(DeletePlaylistRequest) returns (DeletePlaylistResponse);
 }

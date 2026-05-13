@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/NoneNon9/Music-app-gen/playlist"
+	pb "github.com/music-app/playlist-service/gen/playlist"
 	"github.com/music-app/playlist-service/internal/usecase"
 )
 
@@ -24,7 +24,6 @@ func (s *Server) CreatePlaylist(ctx context.Context, req *pb.CreatePlaylistReque
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
 	return &pb.Playlist{
 		Id:          p.ID,
 		UserId:      p.UserID,
@@ -44,12 +43,24 @@ func (s *Server) GetPlaylist(ctx context.Context, req *pb.GetPlaylistRequest) (*
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
+	var pbSongs []*pb.PlaylistSong
+	for _, s := range p.Songs {
+		pbSongs = append(pbSongs, &pb.PlaylistSong{
+			SongId:    s.SongID,
+			Title:     s.Title,
+			Artist:    s.Artist,
+			CoverUrl:  s.CoverURL,
+			AudioUrl:  s.AudioURL,
+			DurationS: int32(s.DurationS),
+			Position:  int32(s.Position),
+		})
+	}
 	return &pb.Playlist{
 		Id:          p.ID,
 		UserId:      p.UserID,
 		Name:        p.Name,
 		Description: p.Description,
+		Songs:       pbSongs,
 		SongCount:   int32(p.SongCount),
 		CreatedAt:   p.CreatedAt.Unix(),
 		UpdatedAt:   p.UpdatedAt.Unix(),
@@ -82,19 +93,20 @@ func (s *Server) ListUserPlaylists(ctx context.Context, req *pb.ListUserPlaylist
 			UpdatedAt:   p.UpdatedAt.Unix(),
 		})
 	}
-
 	return &pb.ListUserPlaylistsResponse{Playlists: pbPlaylists, Total: int32(total)}, nil
 }
 
 func (s *Server) AddSongToPlaylist(ctx context.Context, req *pb.AddSongRequest) (*pb.AddSongResponse, error) {
-	position, err := s.uc.AddSongToPlaylist(ctx, req.PlaylistId, req.SongId, req.UserId)
+	position, err := s.uc.AddSongToPlaylist(
+		ctx, req.PlaylistId, req.SongId, req.UserId,
+		req.Title, req.Artist, req.CoverUrl, req.AudioUrl, int(req.DurationS),
+	)
 	if err != nil {
 		if err == usecase.ErrNotFound {
 			return nil, status.Error(codes.NotFound, "playlist not found")
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
 	return &pb.AddSongResponse{Success: true, Position: int32(position)}, nil
 }
 
@@ -105,21 +117,34 @@ func (s *Server) RemoveSongFromPlaylist(ctx context.Context, req *pb.RemoveSongR
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
 	return &pb.RemoveSongResponse{Success: true}, nil
 }
 
-func (s *Server) AddCollaborator(ctx context.Context, req *pb.AddCollaboratorRequest) (*pb.AddCollaboratorResponse, error) {
-	err := s.uc.AddCollaborator(ctx, req.PlaylistId, req.OwnerId, req.CollaboratorId)
+func (s *Server) UpdatePlaylist(ctx context.Context, req *pb.UpdatePlaylistRequest) (*pb.Playlist, error) {
+	p, err := s.uc.UpdatePlaylist(ctx, req.PlaylistId, req.UserId, req.Name, req.Description)
 	if err != nil {
 		if err == usecase.ErrNotFound {
 			return nil, status.Error(codes.NotFound, "playlist not found")
 		}
-		if err == usecase.ErrForbidden {
-			return nil, status.Error(codes.PermissionDenied, "only the owner can add collaborators")
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &pb.Playlist{
+		Id:          p.ID,
+		UserId:      p.UserID,
+		Name:        p.Name,
+		Description: p.Description,
+		SongCount:   int32(p.SongCount),
+		CreatedAt:   p.CreatedAt.Unix(),
+		UpdatedAt:   p.UpdatedAt.Unix(),
+	}, nil
+}
+
+func (s *Server) DeletePlaylist(ctx context.Context, req *pb.DeletePlaylistRequest) (*pb.DeletePlaylistResponse, error) {
+	if err := s.uc.DeletePlaylist(ctx, req.PlaylistId, req.UserId); err != nil {
+		if err == usecase.ErrNotFound {
+			return nil, status.Error(codes.NotFound, "playlist not found")
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
-	return &pb.AddCollaboratorResponse{Success: true}, nil
+	return &pb.DeletePlaylistResponse{Success: true}, nil
 }

@@ -20,7 +20,7 @@ func NewSongRepository(db *pgxpool.Pool) repository.SongRepository {
 
 func (r *songRepository) GetByID(ctx context.Context, id string) (*entity.Song, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, title, artist_id, album_id, duration_s, genre, created_at
+		`SELECT id, title, artist_id, COALESCE(album_id::text,''), duration_s, COALESCE(genre,''), created_at
 		 FROM songs WHERE id = $1`, id,
 	)
 	s := &entity.Song{}
@@ -34,10 +34,10 @@ func (r *songRepository) GetByID(ctx context.Context, id string) (*entity.Song, 
 func (r *songRepository) List(ctx context.Context, artistID, albumID string, page, limit int) ([]*entity.Song, int, error) {
 	offset := (page - 1) * limit
 	rows, err := r.db.Query(ctx,
-		`SELECT id, title, artist_id, album_id, duration_s, genre, created_at
+		`SELECT id, title, artist_id, COALESCE(album_id::text,''), duration_s, COALESCE(genre,''), created_at
 		 FROM songs
-		 WHERE ($1 = '' OR artist_id = $1)
-		   AND ($2 = '' OR album_id  = $2)
+		 WHERE ($1 = '' OR artist_id::text = $1)
+		   AND ($2 = '' OR album_id::text  = $2)
 		 ORDER BY created_at DESC
 		 LIMIT $3 OFFSET $4`,
 		artistID, albumID, limit, offset,
@@ -59,7 +59,7 @@ func (r *songRepository) List(ctx context.Context, artistID, albumID string, pag
 	var total int
 	_ = r.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM songs
-		 WHERE ($1 = '' OR artist_id = $1) AND ($2 = '' OR album_id = $2)`,
+		 WHERE ($1 = '' OR artist_id::text = $1) AND ($2 = '' OR album_id::text = $2)`,
 		artistID, albumID,
 	).Scan(&total)
 
@@ -69,7 +69,7 @@ func (r *songRepository) List(ctx context.Context, artistID, albumID string, pag
 func (r *songRepository) Search(ctx context.Context, query string, page, limit int) ([]*entity.Song, int, error) {
 	offset := (page - 1) * limit
 	rows, err := r.db.Query(ctx,
-		`SELECT id, title, artist_id, album_id, duration_s, genre, created_at
+		`SELECT id, title, artist_id, COALESCE(album_id::text,''), duration_s, COALESCE(genre,''), created_at
 		 FROM songs
 		 WHERE search_vec @@ plainto_tsquery('english', $1)
 		 ORDER BY ts_rank(search_vec, plainto_tsquery('english', $1)) DESC
