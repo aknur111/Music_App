@@ -52,10 +52,17 @@ func main() {
 	}
 	defer recommConn.Close()
 
+	paymentConn, err := client.NewGRPCConn(cfg.PaymentServiceAddr)
+	if err != nil {
+		logger.Fatal("payment-service connect", zap.Error(err))
+	}
+	defer paymentConn.Close()
+
 	authClient := authpb.NewAuthServiceClient(authConn)
 	musicClient := client.NewMusicClient(musicConn)
 	playlistClient := client.NewPlaylistClient(playlistConn)
 	recommClient := client.NewRecommendationClient(recommConn)
+	paymentClient := client.NewPaymentClient(paymentConn)
 
 	clients := &handler.Clients{
 		RegisterUser: func(ctx context.Context, name, email, password string) (string, error) {
@@ -132,6 +139,13 @@ func main() {
 		GetTrendingTracks:          recommClient.GetTrending,
 		RateTrack:                  recommClient.RateTrack,
 		GetMyWave:                  recommClient.GetMyWave,
+
+		GetPlans:            paymentClient.GetPlans,
+		CreateCheckout:      paymentClient.CreateCheckout,
+		GetPayment:          paymentClient.GetPayment,
+		ListMyPayments:      paymentClient.ListMyPayments,
+		GetMySubscription:   paymentClient.GetMySubscription,
+		HandleCallback:      paymentClient.HandleCallback,
 	}
 
 	r := chi.NewRouter()
