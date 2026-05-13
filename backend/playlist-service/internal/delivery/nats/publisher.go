@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	"github.com/music-app/playlist-service/internal/usecase"
+	"github.com/nats-io/nats.go"
 )
 
 type Publisher struct {
@@ -36,6 +36,7 @@ func (p *Publisher) PublishSongAdded(ctx context.Context, playlistID, songID, us
 	if err != nil {
 		return err
 	}
+
 	_, err = p.js.Publish("music.playlist.song_added", payload)
 	return err
 }
