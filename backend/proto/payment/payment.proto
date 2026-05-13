@@ -1,0 +1,86 @@
+syntax = "proto3";
+package payment;
+option go_package = "github.com/music-app/payment-service/gen/payment";
+
+service PaymentService {
+    rpc GetPlans(GetPlansRequest) returns (GetPlansResponse);
+    rpc CreateCheckout(CreateCheckoutRequest) returns (CreateCheckoutResponse);
+    rpc GetPayment(GetPaymentRequest) returns (GetPaymentResponse);
+    rpc ListMyPayments(ListMyPaymentsRequest) returns (ListMyPaymentsResponse);
+    rpc GetMySubscription(GetMySubscriptionRequest) returns (GetMySubscriptionResponse);
+    rpc HandleCallback(HandleCallbackRequest) returns (HandleCallbackResponse);
+}
+
+message Plan {
+    string id           = 1;
+    string slug         = 2;
+    string name         = 3;
+    string description  = 4;
+    int64  price_kzt    = 5;
+    int32  duration_days = 6;
+    bool   is_active    = 7;
+}
+
+message Payment {
+    string id          = 1;
+    string user_id     = 2;
+    string plan_id     = 3;
+    string plan_name   = 4;
+    string provider_id = 5;
+    string provider_ref = 6;
+    int64  amount_kzt  = 7;
+    string status      = 8;
+    string checkout_url = 9;
+    string created_at  = 10;
+}
+
+message Subscription {
+    string id        = 1;
+    string user_id   = 2;
+    string plan_id   = 3;
+    string plan_slug = 4;
+    string plan_name = 5;
+    string status    = 6;
+    string starts_at = 7;
+    string expires_at = 8;
+    string created_at = 9;
+}
+
+message GetPlansRequest {}
+message GetPlansResponse { repeated Plan plans = 1; }
+
+message CreateCheckoutRequest {
+    string user_id   = 1;
+    string plan_slug = 2;
+    string return_url = 3;
+    string fail_url  = 4;
+}
+message CreateCheckoutResponse {
+    string payment_id   = 1;
+    string checkout_url = 2;
+    string provider_ref = 3;
+}
+
+message GetPaymentRequest {
+    string payment_id = 1;
+    string user_id    = 2;
+}
+message GetPaymentResponse { Payment payment = 1; }
+
+message ListMyPaymentsRequest { string user_id = 1; }
+message ListMyPaymentsResponse { repeated Payment payments = 1; }
+
+message GetMySubscriptionRequest { string user_id = 1; }
+message GetMySubscriptionResponse {
+    Subscription subscription  = 1;
+    bool         has_subscription = 2;
+}
+
+message HandleCallbackRequest {
+    string provider_id  = 1;
+    string payment_id   = 2;
+    string provider_ref = 3;
+    bool   success      = 4;
+    string raw_body     = 5;
+}
+message HandleCallbackResponse { bool ok = 1; }
