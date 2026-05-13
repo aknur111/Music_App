@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Heart, ListMusic, Users } from 'lucide-react'
+import { LogOut, Heart, ListMusic, Users, Zap, Shield } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useFavoritesStore } from '@/store/favoritesStore'
+import { useSubscriptionStore } from '@/store/subscriptionStore'
 import { PlaylistService } from '@/services/playlist.service'
 import { getInitials } from '@/lib/utils'
 
@@ -15,13 +16,15 @@ export default function ProfilePage() {
   const logout = useAuthStore((s) => s.logout)
   const user = useAuthStore((s) => s.user)
   const likedCount = useFavoritesStore((s) => s.tracks.length)
+  const { subscription, hasSubscription, fetch: fetchSub } = useSubscriptionStore()
   const [playlistCount, setPlaylistCount] = useState<number | null>(null)
 
   useEffect(() => {
     PlaylistService.getUserPlaylists()
       .then((pls) => setPlaylistCount(pls.length))
       .catch(() => setPlaylistCount(0))
-  }, [])
+    fetchSub()
+  }, [fetchSub])
 
   const handleLogout = () => {
     logout()
@@ -77,6 +80,44 @@ export default function ProfilePage() {
             <p className="text-xs text-white/35 mt-0.5">{label}</p>
           </div>
         ))}
+      </motion.div>
+
+      {/* Subscription */}
+      <motion.div variants={item} className="rounded-2xl bg-white/[0.03] border border-white/[0.07] mb-5 overflow-hidden">
+        <div className="px-5 py-3.5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-white/25 mb-3">Subscription</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              {hasSubscription && subscription?.plan_slug !== 'free' ? (
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                  <Zap className="w-3.5 h-3.5 text-white" />
+                </div>
+              ) : (
+                <div className="w-7 h-7 rounded-lg bg-white/[0.06] flex items-center justify-center">
+                  <Shield className="w-3.5 h-3.5 text-white/40" />
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  {hasSubscription ? subscription?.plan_name : 'Free'}
+                </p>
+                {subscription?.expires_at && (
+                  <p className="text-xs text-white/30">
+                    Until {new Date(subscription.expires_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </p>
+                )}
+              </div>
+            </div>
+            {(!hasSubscription || subscription?.plan_slug === 'free') && (
+              <button
+                onClick={() => navigate('/premium')}
+                className="text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+              >
+                Upgrade
+              </button>
+            )}
+          </div>
+        </div>
       </motion.div>
 
       {/* Account details */}
