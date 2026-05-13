@@ -18,16 +18,20 @@ import (
 )
 
 type Clients struct {
-	ValidateToken func(ctx context.Context, token string) (userID, email string, valid bool)
-	RegisterUser  func(ctx context.Context, name, email, password string) (userID string, err error)
-	LoginUser     func(ctx context.Context, email, password string) (access, refresh string, expiresAt int64, err error)
-	LogoutUser    func(ctx context.Context, token string) error
-	RefreshToken  func(ctx context.Context, refreshToken string) (access, refresh string, expiresAt int64, err error)
-	GetSong       func(ctx context.Context, id string) (interface{}, error)
-	ListSongs     func(ctx context.Context, artistID, albumID string, page, limit int) (interface{}, error)
-	SearchSongs   func(ctx context.Context, query string, page, limit int) (interface{}, error)
-	GetAlbum      func(ctx context.Context, id string) (interface{}, error)
-	ListAlbums    func(ctx context.Context, artistID string, page, limit int) (interface{}, error)
+	ValidateToken  func(ctx context.Context, token string) (userID, email string, valid bool)
+	RegisterUser   func(ctx context.Context, name, email, password string) (userID string, err error)
+	LoginUser      func(ctx context.Context, email, password string) (access, refresh string, expiresAt int64, err error)
+	LogoutUser     func(ctx context.Context, token string) error
+	RefreshToken   func(ctx context.Context, refreshToken string) (access, refresh string, expiresAt int64, err error)
+	GetSong        func(ctx context.Context, id string) (interface{}, error)
+	ListSongs      func(ctx context.Context, artistID, albumID string, page, limit int) (interface{}, error)
+	SearchSongs    func(ctx context.Context, query string, page, limit int) (interface{}, error)
+	GetAlbum       func(ctx context.Context, id string) (interface{}, error)
+	ListAlbums     func(ctx context.Context, artistID string, page, limit int) (interface{}, error)
+	GetArtist      func(ctx context.Context, id string) (interface{}, error)
+	ListArtists    func(ctx context.Context, page, limit int) (interface{}, error)
+	SearchArtists  func(ctx context.Context, query string, page, limit int) (interface{}, error)
+	UploadSong     func(ctx context.Context, title, artistID, albumID string, duration int, genre, uploaderID string) (interface{}, error)
 	CreatePlaylist func(ctx context.Context, userID, name, desc string) (interface{}, error)
 	GetPlaylist    func(ctx context.Context, id, userID string) (interface{}, error)
 	ListPlaylists  func(ctx context.Context, userID string, page, limit int) (interface{}, error)
@@ -91,6 +95,22 @@ func Router(clients *Clients) http.Handler {
 		r.Get("/trending", trendingTracksHandler(clients))
 		r.Post("/rate", rateTrackHandler(clients))
 		r.Get("/wave", myWaveHandler(clients))
+	})
+
+	r.Route("/api/v1/music", func(r chi.Router) {
+
+		r.Get("/songs/{id}", getSongHandler(clients))
+		r.Get("/songs", listSongsHandler(clients))
+		r.Get("/songs/search", searchSongsHandler(clients))
+
+		r.Get("/albums/{id}", getAlbumHandler(clients))
+		r.Get("/albums", listAlbumsHandler(clients))
+
+		r.Get("/artists/{id}", getArtistHandler(clients))
+		r.Get("/artists", listArtistsHandler(clients))
+		r.Get("/artists/search", searchArtistsHandler(clients))
+
+		r.Post("/upload", uploadSongHandler(clients))
 	})
 
 	return r
@@ -691,5 +711,95 @@ func myWaveHandler(c *Clients) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{"tracks": tracks})
+	}
+}
+
+// --- Artist handlers ---
+
+func getArtistHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res, err := c.GetArtist(
+			r.Context(),
+			chi.URLParam(r, "id"),
+		)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, res)
+	}
+}
+
+func listArtistsHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res, err := c.ListArtists(
+			r.Context(),
+			parsePage(r),
+			parseLimit(r, 20),
+		)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, res)
+	}
+}
+
+func searchArtistsHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res, err := c.SearchArtists(
+			r.Context(),
+			r.URL.Query().Get("q"),
+			parsePage(r),
+			parseLimit(r, 20),
+		)
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, res)
+	}
+}
+
+// --- Upload song ---
+
+func uploadSongHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		var req struct {
+			Title      string `json:"title"`
+			ArtistID   string `json:"artist_id"`
+			AlbumID    string `json:"album_id"`
+			DurationS  int    `json:"duration_s"`
+			Genre      string `json:"genre"`
+			UploaderID string `json:"uploader_id"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "invalid request",
+			})
+			return
+		}
+
+		res, err := c.UploadSong(
+			r.Context(),
+			req.Title,
+			req.ArtistID,
+			req.AlbumID,
+			req.DurationS,
+			req.Genre,
+			req.UploaderID,
+		)
+
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+
+		writeJSON(w, http.StatusCreated, res)
 	}
 }
