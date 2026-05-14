@@ -113,6 +113,11 @@ export const PlaylistService = {
   async deletePlaylist(id: string): Promise<void> {
     await axiosInstance.delete(`/api/v1/playlists/${id}`)
   },
+  async addCollaborator(playlistId: string, collaboratorId: string): Promise<void> {
+    await axiosInstance.post(`/api/v1/playlists/${playlistId}/collaborators`, {
+      collaborator_id: collaboratorId,
+    })
+  },
 }
 
 export default PlaylistService

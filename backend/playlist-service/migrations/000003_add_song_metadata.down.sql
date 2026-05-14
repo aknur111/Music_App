@@ -1,0 +1,6 @@
+ALTER TABLE playlist_songs
+DROP COLUMN IF EXISTS title,
+DROP COLUMN IF EXISTS artist,
+DROP COLUMN IF EXISTS cover_url,
+DROP COLUMN IF EXISTS audio_url,
+DROP COLUMN IF EXISTS duration_s;

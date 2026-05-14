@@ -1,0 +1,6 @@
+ALTER TABLE playlist_songs
+ADD COLUMN title TEXT DEFAULT '',
+ADD COLUMN artist TEXT DEFAULT '',
+ADD COLUMN cover_url TEXT DEFAULT '',
+ADD COLUMN audio_url TEXT DEFAULT '',
+ADD COLUMN duration_s INT DEFAULT 0;

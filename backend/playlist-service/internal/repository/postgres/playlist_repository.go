@@ -45,9 +45,11 @@ func (r *playlistRepository) GetByID(ctx context.Context, id, userID string) (*e
 func (r *playlistRepository) ListByUserID(ctx context.Context, userID string, page, limit int) ([]*entity.Playlist, int, error) {
 	offset := (page - 1) * limit
 	rows, err := r.db.Query(ctx,
-		`SELECT id, user_id, name, description, song_count, created_at, updated_at
-		 FROM playlists WHERE user_id = $1
-		 ORDER BY updated_at DESC LIMIT $2 OFFSET $3`,
+		`SELECT p.id, p.user_id, p.name, p.description, p.song_count, p.created_at, p.updated_at
+     FROM playlists p
+     LEFT JOIN playlist_collaborators c ON p.id = c.playlist_id AND c.user_id = $1
+     WHERE p.user_id = $1 OR c.user_id IS NOT NULL
+     ORDER BY p.updated_at DESC LIMIT $2 OFFSET $3`,
 		userID, limit, offset,
 	)
 	if err != nil {
@@ -65,7 +67,13 @@ func (r *playlistRepository) ListByUserID(ctx context.Context, userID string, pa
 	}
 
 	var total int
-	_ = r.db.QueryRow(ctx, `SELECT COUNT(*) FROM playlists WHERE user_id = $1`, userID).Scan(&total)
+	err = r.db.QueryRow(ctx,
+		`SELECT COUNT(*) 
+     FROM playlists p
+     LEFT JOIN playlist_collaborators c ON p.id = c.playlist_id AND c.user_id = $1
+     WHERE p.user_id = $1 OR c.user_id IS NOT NULL`,
+		userID,
+	).Scan(&total)
 	return playlists, total, nil
 }
 
