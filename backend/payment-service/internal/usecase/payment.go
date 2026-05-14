@@ -144,7 +144,7 @@ func (u *PaymentUsecase) HandleCallback(ctx context.Context, providerID, payment
 		return fmt.Errorf("unknown provider: %s", providerID)
 	}
 
-	verified, verifyErr := p.VerifyPayment(ctx, payment.ProviderRef)
+	verified, verifyErr := p.VerifyPayment(ctx, providerRef)
 
 	actualSuccess := success
 	verifyRaw := ""

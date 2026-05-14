@@ -7,10 +7,10 @@ function toTrack(song: any) {
 
     title: song.title,
 
-    artist: song.artist_id,
-    artistId: song.artist_id,
+    artist: song.artist || song.artist_id || '',
+    artistId: song.artist_id || '',
 
-    album: song.album_id || 'Unknown Album',
+    album: song.album_name || song.album_id || 'Unknown Album',
     albumId: song.album_id || '',
 
     duration: song.duration_s,
