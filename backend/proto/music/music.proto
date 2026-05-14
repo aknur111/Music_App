@@ -18,6 +18,8 @@ message Song {
   int32    duration_s = 7;
   string   genre      = 8;
   google.protobuf.Timestamp created_at = 9;
+  string   preview_url = 10;
+  string   cover_url   = 11;
 }
 
 message Album {
