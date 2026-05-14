@@ -1,4 +1,4 @@
-.PHONY: proto proto-recommendation up down test test-unit test-integration migrate lint tidy fmt vet build mocks seed-recommendations help
+.PHONY: proto proto-recommendation proto-payment up down test test-unit test-integration migrate lint tidy fmt vet build mocks seed-recommendations help
 
 SERVICES := auth-service music-service playlist-service notification-service recommendation-service api-gateway
 PROTO_DIR := proto
@@ -37,6 +37,7 @@ proto:
 		-I $(PROTO_DIR) \
 		$(PROTO_DIR)/notification/notification.proto
 	@$(MAKE) proto-recommendation
+	@$(MAKE) proto-payment
 	@echo "Done."
 
 proto-recommendation:
@@ -49,6 +50,17 @@ proto-recommendation:
 		--go-grpc_opt=paths=source_relative \
 		-I $(PROTO_DIR) \
 		$(PROTO_DIR)/recommendation/recommendation.proto
+
+proto-payment:
+	@echo "Generating payment protobuf stubs..."
+	@mkdir -p payment-service/gen/payment
+	protoc \
+		--go_out=payment-service/gen \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=payment-service/gen \
+		--go-grpc_opt=paths=source_relative \
+		-I $(PROTO_DIR) \
+		$(PROTO_DIR)/payment/payment.proto
 
 up:
 	docker compose up -d --build

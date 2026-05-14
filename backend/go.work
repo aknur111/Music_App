@@ -5,6 +5,7 @@ use (
 	./auth-service
 	./music-service
 	./notification-service
+	./payment-service
 	./playlist-service
 	./recommendation-service
 	./tests/integration

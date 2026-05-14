@@ -7,6 +7,7 @@ COPY auth-service/go.mod ./auth-service/
 COPY recommendation-service/go.mod ./recommendation-service/
 COPY music-service/go.mod ./music-service/
 COPY playlist-service/go.mod ./playlist-service/
+COPY payment-service/go.mod ./payment-service/
 
 WORKDIR /app/api-gateway
 RUN go mod download
@@ -17,6 +18,7 @@ COPY auth-service ./auth-service
 COPY recommendation-service ./recommendation-service
 COPY music-service ./music-service
 COPY playlist-service ./playlist-service
+COPY payment-service ./payment-service
 
 WORKDIR /app/api-gateway
 RUN CGO_ENABLED=0 GOOS=linux go build -o /api-gateway ./cmd/...
