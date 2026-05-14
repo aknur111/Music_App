@@ -15,15 +15,37 @@ export default function AlbumDetailPage() {
   const { playTrack, currentTrack, isPlaying } = usePlayerStore()
   const { isLiked, toggle: toggleFav } = useFavoritesStore()
   const [album, setAlbum] = useState<Album | null>(null)
+  const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [playlistTrack, setPlaylistTrack] = useState<Track | null>(null)
 
   useEffect(() => {
     if (!id) return
-    MusicService.getAlbum(id)
-      .then(setAlbum)
-      .catch(() => setAlbum(null))
-      .finally(() => setLoading(false))
+
+    const albumId = id
+
+    async function loadAlbumPage() {
+      setLoading(true)
+
+      try {
+        const albumData = await MusicService.getAlbum(albumId)
+        setAlbum(albumData)
+
+        try {
+          const albumTracks = await MusicService.getAlbumTracks(albumId)
+          setTracks(albumTracks)
+        } catch {
+          setTracks(albumData.tracks ?? [])
+        }
+      } catch {
+        setAlbum(null)
+        setTracks([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAlbumPage()
   }, [id])
 
   if (loading) {
@@ -47,7 +69,6 @@ export default function AlbumDetailPage() {
     )
   }
 
-  const tracks = album.tracks ?? []
   const totalDuration = tracks.reduce((acc, t) => acc + t.duration, 0)
 
   return (

@@ -25,10 +25,19 @@ export const jamendoProvider: MusicProvider = {
       client.fetchAlbum(rawId),
       client.fetchAlbumTracks(rawId),
     ])
+
     if (!raw) return null
+
     const album = toAlbum(raw, tracks.length)
     album.tracks = tracks.map(toTrack)
+
     return album
+  },
+
+  async getAlbumTracks(id) {
+    const rawId = id.replace(/^jmd-al-/, '')
+    const raw = await client.fetchAlbumTracks(rawId)
+    return raw.map(toTrack)
   },
 
   async getArtists({ limit = 20 } = {}) {
@@ -45,5 +54,29 @@ export const jamendoProvider: MusicProvider = {
   async searchTracks(query) {
     const raw = await client.fetchTracks({ search: query, limit: 20 })
     return raw.map(toTrack)
+  },
+
+  async searchArtists(_query: string) {
+    return []
+  },
+
+  async uploadSong() {
+    throw new Error('UploadSong is not supported by Jamendo provider')
+  },
+
+  async createSong() {
+    throw new Error('CreateSong is not supported by Jamendo provider')
+  },
+
+  async updateSong() {
+    throw new Error('UpdateSong is not supported by Jamendo provider')
+  },
+
+  async deleteSong() {
+    throw new Error('DeleteSong is not supported by Jamendo provider')
+  },
+
+  async createAlbum() {
+    throw new Error('CreateAlbum is not supported by Jamendo provider')
   },
 }

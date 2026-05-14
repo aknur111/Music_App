@@ -30,14 +30,57 @@ func (r *albumRepository) GetByID(ctx context.Context, id string) (*entity.Album
 	return a, err
 }
 
-func (r *albumRepository) List(ctx context.Context, artistID string, page, limit int) ([]*entity.Album, int, error) {
+func (r *albumRepository) List(
+	ctx context.Context,
+	artistID string,
+	page,
+	limit int,
+) ([]*entity.Album, int, error) {
+
 	offset := (page - 1) * limit
-	rows, err := r.db.Query(ctx,
-		`SELECT id, title, artist_id, year, created_at FROM albums
-		 WHERE ($1 = '' OR artist_id::text = $1)
-		 ORDER BY year DESC, title
-		 LIMIT $2 OFFSET $3`,
-		artistID, limit, offset,
+
+	query := `
+		SELECT id, title, artist_id, year, created_at
+		FROM albums
+	`
+
+	countQuery := `
+		SELECT COUNT(*)
+		FROM albums
+	`
+
+	args := []any{}
+	countArgs := []any{}
+
+	if artistID != "" {
+		query += ` WHERE artist_id = $1`
+		countQuery += ` WHERE artist_id = $1`
+
+		args = append(args, artistID)
+		countArgs = append(countArgs, artistID)
+	}
+
+	query += `
+		ORDER BY year DESC, title
+		LIMIT $` + func() string {
+		if artistID != "" {
+			return "2"
+		}
+		return "1"
+	}() + `
+		OFFSET $` + func() string {
+		if artistID != "" {
+			return "3"
+		}
+		return "2"
+	}()
+
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Query(
+		ctx,
+		query,
+		args...,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -45,18 +88,38 @@ func (r *albumRepository) List(ctx context.Context, artistID string, page, limit
 	defer rows.Close()
 
 	var albums []*entity.Album
+
 	for rows.Next() {
+
 		a := &entity.Album{}
-		if err := rows.Scan(&a.ID, &a.Title, &a.ArtistID, &a.Year, &a.CreatedAt); err != nil {
+
+		if err := rows.Scan(
+			&a.ID,
+			&a.Title,
+			&a.ArtistID,
+			&a.Year,
+			&a.CreatedAt,
+		); err != nil {
+
 			return nil, 0, err
 		}
-		albums = append(albums, a)
+
+		albums = append(
+			albums,
+			a,
+		)
 	}
 
 	var total int
-	_ = r.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM albums WHERE ($1 = '' OR artist_id::text = $1)`, artistID,
-	).Scan(&total)
+
+	if err := r.db.QueryRow(
+		ctx,
+		countQuery,
+		countArgs...,
+	).Scan(&total); err != nil {
+
+		return nil, 0, err
+	}
 
 	return albums, total, nil
 }

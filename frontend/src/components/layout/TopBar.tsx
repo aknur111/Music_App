@@ -17,18 +17,36 @@ import {
 import { clsx } from 'clsx';
 import { useAuthStore } from '@/store/authStore';
 import { useSidebarStore } from '@/store/sidebarStore';
+import useDebounce from '@/hooks/useDebounce';
+import MusicService from '@/services/music.service';
+import type { Track, Artist } from '@/types';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
+
   const { user, isAdmin, logout } = useAuthStore() as {
-    user: { username?: string; name?: string; email?: string; avatarUrl?: string; avatar?: string } | null;
+    user: {
+      username?: string;
+      name?: string;
+      email?: string;
+      avatarUrl?: string;
+      avatar?: string;
+    } | null;
     isAdmin: boolean;
     logout: () => void;
   };
+
   const { isCollapsed } = useSidebarStore();
 
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchValue, setSearchValue] = useState('');
+
+  const [trackResults, setTrackResults] = useState<Track[]>([]);
+  const [artistResults, setArtistResults] = useState<Artist[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const debouncedQuery = useDebounce(searchValue, 400);
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifsRead, setNotifsRead] = useState(false);
@@ -38,9 +56,27 @@ export const TopBar: React.FC = () => {
   const notifRef = useRef<HTMLDivElement>(null);
 
   const NOTIFICATIONS = [
-    { id: '1', icon: Music, text: 'Luna Lux released "Electric Soul"', time: '2h ago', unread: true },
-    { id: '2', icon: Sparkles, text: 'Your weekly picks are ready', time: '5h ago', unread: true },
-    { id: '3', icon: Disc3, text: 'New tracks added to Chill Ambient', time: '1d ago', unread: false },
+    {
+      id: '1',
+      icon: Music,
+      text: 'Luna Lux released "Electric Soul"',
+      time: '2h ago',
+      unread: true,
+    },
+    {
+      id: '2',
+      icon: Sparkles,
+      text: 'Your weekly picks are ready',
+      time: '5h ago',
+      unread: true,
+    },
+    {
+      id: '3',
+      icon: Disc3,
+      text: 'New tracks added to Chill Ambient',
+      time: '1d ago',
+      unread: false,
+    },
   ];
 
   const handleNotifClick = () => {
@@ -53,26 +89,73 @@ export const TopBar: React.FC = () => {
   // Close panels on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setDropdownOpen(false);
       }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+
+      if (
+        notifRef.current &&
+        !notifRef.current.contains(e.target as Node)
+      ) {
         setNotifOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+
+    return () => {
+      document.removeEventListener('mousedown', handler);
+    };
   }, []);
+
+  // Search tracks + artists
+  useEffect(() => {
+    async function search() {
+      const query = debouncedQuery.trim();
+
+      if (!query) {
+        setTrackResults([]);
+        setArtistResults([]);
+        setSearchLoading(false);
+        return;
+      }
+
+      setSearchLoading(true);
+
+      try {
+        const [tracks, artists] = await Promise.all([
+          MusicService.searchTracks(query),
+          MusicService.searchArtists(query),
+        ]);
+
+        setTrackResults(tracks.slice(0, 5));
+        setArtistResults(artists.slice(0, 5));
+      } finally {
+        setSearchLoading(false);
+      }
+    }
+
+    search();
+  }, [debouncedQuery]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (searchValue.trim()) {
       navigate(`/tracks?q=${encodeURIComponent(searchValue.trim())}`);
       setSearchValue('');
+      setTrackResults([]);
+      setArtistResults([]);
     }
   };
 
   const sidebarWidth = isCollapsed ? 72 : 240;
+
+  const hasSearchResults =
+    trackResults.length > 0 || artistResults.length > 0;
 
   return (
     <motion.header
@@ -89,12 +172,23 @@ export const TopBar: React.FC = () => {
         {/* Back/Forward */}
         <div className="flex items-center gap-1 flex-shrink-0">
           {[
-            { icon: ChevronLeft, action: () => navigate(-1), label: 'Back' },
-            { icon: ChevronRight, action: () => navigate(1), label: 'Forward' },
+            {
+              icon: ChevronLeft,
+              action: () => navigate(-1),
+              label: 'Back',
+            },
+            {
+              icon: ChevronRight,
+              action: () => navigate(1),
+              label: 'Forward',
+            },
           ].map(({ icon: Icon, action, label }) => (
             <motion.button
               key={label}
-              whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.08)' }}
+              whileHover={{
+                scale: 1.1,
+                backgroundColor: 'rgba(255,255,255,0.08)',
+              }}
               whileTap={{ scale: 0.9 }}
               onClick={action}
               title={label}
@@ -106,7 +200,7 @@ export const TopBar: React.FC = () => {
         </div>
 
         {/* Search bar */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md">
+        <form onSubmit={handleSearch} className="flex-1 max-w-md relative">
           <motion.div
             animate={{
               width: searchFocused ? '100%' : '220px',
@@ -120,9 +214,10 @@ export const TopBar: React.FC = () => {
             <Search
               className={clsx(
                 'absolute left-3 w-4 h-4 transition-colors duration-200 pointer-events-none',
-                searchFocused ? 'text-violet-400' : 'text-white/30'
+                searchFocused ? 'text-violet-400' : 'text-white/30',
               )}
             />
+
             <input
               ref={searchRef}
               type="text"
@@ -133,6 +228,7 @@ export const TopBar: React.FC = () => {
               placeholder="Search tracks, artists, albums…"
               className="w-full bg-transparent pl-9 pr-8 py-2 text-sm text-white placeholder:text-white/25 outline-none"
             />
+
             <AnimatePresence>
               {searchValue && (
                 <motion.button
@@ -142,6 +238,8 @@ export const TopBar: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setSearchValue('');
+                    setTrackResults([]);
+                    setArtistResults([]);
                     searchRef.current?.focus();
                   }}
                   className="absolute right-2.5 text-white/30 hover:text-white/70 transition-colors"
@@ -151,6 +249,84 @@ export const TopBar: React.FC = () => {
               )}
             </AnimatePresence>
           </motion.div>
+
+          {searchValue && (
+            <div className="absolute top-14 left-0 w-full max-w-md bg-[#13131f] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden z-50">
+              {searchLoading && (
+                <div className="p-4 text-sm text-white/40">
+                  Searching...
+                </div>
+              )}
+
+              {!searchLoading && trackResults.length > 0 && (
+                <div>
+                  <div className="px-4 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
+                    Tracks
+                  </div>
+
+                  {trackResults.map((track) => (
+                    <button
+                      key={track.id}
+                      onMouseDown={() => {
+                        navigate(
+                          `/tracks?q=${encodeURIComponent(track.title)}`,
+                        );
+                        setSearchValue('');
+                        setTrackResults([]);
+                        setArtistResults([]);
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-white/[0.05] transition-colors"
+                    >
+                      <p className="text-sm text-white">
+                        {track.title}
+                      </p>
+
+                      <p className="text-xs text-white/40">
+                        {track.artist}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!searchLoading && artistResults.length > 0 && (
+                <div className="border-t border-white/[0.06]">
+                  <div className="px-4 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
+                    Artists
+                  </div>
+
+                  {artistResults.map((artist) => (
+                    <button
+                      key={artist.id}
+                      onMouseDown={() => {
+                        navigate(
+                          `/artists?q=${encodeURIComponent(artist.name)}`,
+                        );
+                        setSearchValue('');
+                        setTrackResults([]);
+                        setArtistResults([]);
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-white/[0.05] transition-colors"
+                    >
+                      <p className="text-sm text-white">
+                        {artist.name}
+                      </p>
+
+                      <p className="text-xs text-white/40">
+                        Artist
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!searchLoading && searchValue && !hasSearchResults && (
+                <div className="p-4 text-sm text-white/40">
+                  No results
+                </div>
+              )}
+            </div>
+          )}
         </form>
 
         {/* Right side */}
@@ -164,6 +340,7 @@ export const TopBar: React.FC = () => {
               className="relative w-8 h-8 flex items-center justify-center rounded-full text-white/40 hover:text-white/90 hover:bg-white/5 transition-colors duration-200"
             >
               <Bell className="w-4 h-4" />
+
               {!notifsRead && (
                 <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-violet-500 ring-2 ring-[#06060e]" />
               )}
@@ -175,34 +352,64 @@ export const TopBar: React.FC = () => {
                   initial={{ opacity: 0, scale: 0.93, y: -6 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.93, y: -6 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 380,
+                    damping: 30,
+                  }}
                   className="absolute right-0 top-11 w-72 bg-[#13131f] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden z-50"
                 >
                   <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
-                    <p className="text-sm font-semibold text-white">Notifications</p>
-                    <span className="text-[10px] text-white/30 font-medium uppercase tracking-wide">3 new</span>
+                    <p className="text-sm font-semibold text-white">
+                      Notifications
+                    </p>
+
+                    <span className="text-[10px] text-white/30 font-medium uppercase tracking-wide">
+                      3 new
+                    </span>
                   </div>
+
                   <div className="divide-y divide-white/[0.04]">
-                    {NOTIFICATIONS.map(({ id, icon: Icon, text, time, unread }) => (
-                      <div
-                        key={id}
-                        className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.04] transition-colors cursor-pointer"
-                      >
-                        <div className={clsx(
-                          'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5',
-                          unread ? 'bg-violet-500/20' : 'bg-white/[0.05]'
-                        )}>
-                          <Icon className={clsx('w-4 h-4', unread ? 'text-violet-400' : 'text-white/30')} />
+                    {NOTIFICATIONS.map(
+                      ({ id, icon: Icon, text, time, unread }) => (
+                        <div
+                          key={id}
+                          className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.04] transition-colors cursor-pointer"
+                        >
+                          <div
+                            className={clsx(
+                              'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5',
+                              unread
+                                ? 'bg-violet-500/20'
+                                : 'bg-white/[0.05]',
+                            )}
+                          >
+                            <Icon
+                              className={clsx(
+                                'w-4 h-4',
+                                unread
+                                  ? 'text-violet-400'
+                                  : 'text-white/30',
+                              )}
+                            />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-white/80 leading-relaxed">
+                              {text}
+                            </p>
+
+                            <p className="text-[10px] text-white/30 mt-0.5">
+                              {time}
+                            </p>
+                          </div>
+
+                          {unread && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0 mt-2" />
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-white/80 leading-relaxed">{text}</p>
-                          <p className="text-[10px] text-white/30 mt-0.5">{time}</p>
-                        </div>
-                        {unread && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0 mt-2" />
-                        )}
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -219,13 +426,18 @@ export const TopBar: React.FC = () => {
             >
               <div className="w-7 h-7 rounded-lg overflow-hidden bg-gradient-to-br from-violet-600 to-cyan-500 flex-shrink-0">
                 {user?.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.username ?? ''} className="w-full h-full object-cover" />
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.username ?? ''}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white">
                     {(user?.username ?? user?.name ?? 'U')[0].toUpperCase()}
                   </div>
                 )}
               </div>
+
               <span className="text-sm font-medium text-white/80 max-w-[100px] truncate hidden sm:block">
                 {user?.username ?? user?.name ?? 'User'}
               </span>
@@ -237,13 +449,22 @@ export const TopBar: React.FC = () => {
                   initial={{ opacity: 0, scale: 0.93, y: -6 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.93, y: -6 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 380,
+                    damping: 30,
+                  }}
                   className="absolute right-0 top-11 w-52 bg-[#13131f] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden z-50"
                 >
                   {/* User info header */}
                   <div className="px-4 py-3 border-b border-white/[0.06]">
-                    <p className="text-sm font-semibold text-white truncate">{user?.username ?? user?.name}</p>
-                    <p className="text-xs text-white/40 truncate">{user?.email}</p>
+                    <p className="text-sm font-semibold text-white truncate">
+                      {user?.username ?? user?.name}
+                    </p>
+
+                    <p className="text-xs text-white/40 truncate">
+                      {user?.email}
+                    </p>
                   </div>
 
                   <div className="p-1.5 flex flex-col gap-0.5">
@@ -251,14 +472,22 @@ export const TopBar: React.FC = () => {
                       {
                         label: 'View Profile',
                         icon: User,
-                        action: () => { navigate('/profile'); setDropdownOpen(false); },
+                        action: () => {
+                          navigate('/profile');
+                          setDropdownOpen(false);
+                        },
                       },
                       ...(isAdmin
-                        ? [{
-                            label: 'Admin Dashboard',
-                            icon: LayoutDashboard,
-                            action: () => { navigate('/admin'); setDropdownOpen(false); },
-                          }]
+                        ? [
+                            {
+                              label: 'Admin Dashboard',
+                              icon: LayoutDashboard,
+                              action: () => {
+                                navigate('/admin');
+                                setDropdownOpen(false);
+                              },
+                            },
+                          ]
                         : []),
                     ].map(({ label, icon: Icon, action }) => (
                       <button

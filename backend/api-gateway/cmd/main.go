@@ -118,10 +118,16 @@ func main() {
 		GetSong:       musicClient.GetSong,
 		ListSongs:     musicClient.ListSongs,
 		SearchSongs:   musicClient.SearchSongs,
+		GetAlbum:      musicClient.GetAlbum,
+		ListAlbums:    musicClient.ListAlbums,
 		GetArtist:     musicClient.GetArtist,
 		ListArtists:   musicClient.ListArtists,
 		SearchArtists: musicClient.SearchArtists,
 		UploadSong:    musicClient.UploadSong,
+		CreateSong:    musicClient.CreateSong,
+		UpdateSong:    musicClient.UpdateSong,
+		DeleteSong:    musicClient.DeleteSong,
+		CreateAlbum:   musicClient.CreateAlbum,
 
 		CreatePlaylist:  playlistClient.CreatePlaylist,
 		GetPlaylist:     playlistClient.GetPlaylist,
@@ -141,12 +147,12 @@ func main() {
 		RateTrack:                  recommClient.RateTrack,
 		GetMyWave:                  recommClient.GetMyWave,
 
-		GetPlans:            paymentClient.GetPlans,
-		CreateCheckout:      paymentClient.CreateCheckout,
-		GetPayment:          paymentClient.GetPayment,
-		ListMyPayments:      paymentClient.ListMyPayments,
-		GetMySubscription:   paymentClient.GetMySubscription,
-		HandleCallback:      paymentClient.HandleCallback,
+		GetPlans:          paymentClient.GetPlans,
+		CreateCheckout:    paymentClient.CreateCheckout,
+		GetPayment:        paymentClient.GetPayment,
+		ListMyPayments:    paymentClient.ListMyPayments,
+		GetMySubscription: paymentClient.GetMySubscription,
+		HandleCallback:    paymentClient.HandleCallback,
 	}
 
 	r := chi.NewRouter()
