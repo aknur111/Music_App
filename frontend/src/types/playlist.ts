@@ -15,6 +15,8 @@ export interface Playlist {
   updatedAt: string
 }
 
+
+
 export interface PlaylistCreateInput {
   name: string
   description?: string
@@ -32,4 +34,10 @@ export interface PlaylistUpdateInput {
 export interface PlaylistAddTrackInput {
   playlistId: string
   trackId: string
+}
+
+export interface PlaylistAddCollaboratorInput {
+  playlistId: string
+  collaboratorId: string
+  collaboratorIds?: string[]
 }
