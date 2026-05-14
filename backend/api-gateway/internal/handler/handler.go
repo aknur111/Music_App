@@ -56,8 +56,6 @@ type Clients struct {
 	ListMyPayments    func(ctx context.Context, userID string) (interface{}, error)
 	GetMySubscription func(ctx context.Context, userID string) (interface{}, error)
 	HandleCallback    func(ctx context.Context, providerID, paymentID, providerRef string, success bool, rawBody string) (interface{}, error)
-	UpdatePlaylist  func(ctx context.Context, playlistID, userID, name, description string) (interface{}, error)
-	DeletePlaylist  func(ctx context.Context, playlistID, userID string) error
 	AddCollaborator func(ctx context.Context, playlistID, ownerID, collaboratorID string) error
 }
 
