@@ -1,5 +1,4 @@
 import { get, post } from '@/services/api'
-import { fetchTracks } from '@/providers/jamendo/client'
 import type { Track } from '@/types'
 import type { MoodMeta } from '@/types/recommendation'
 
@@ -24,8 +23,32 @@ interface RecommendTrackRaw {
   preview_url?: string
 }
 
+// iTunes Search API — free, no API key, CORS-friendly, has all mainstream artists.
+// Returns high-res artwork (600×600) for the best-matching song.
+async function fetchItunesArtwork(artist: string, name: string): Promise<string> {
+  try {
+    const term = encodeURIComponent(`${artist} ${name}`)
+    const res = await fetch(
+      `https://itunes.apple.com/search?term=${term}&entity=song&limit=1&media=music`,
+      { signal: AbortSignal.timeout(5000) },
+    )
+    if (!res.ok) return ''
+    const data = await res.json()
+    const artwork: string | undefined = data.results?.[0]?.artworkUrl100
+    return artwork ? artwork.replace('100x100bb', '600x600bb') : ''
+  } catch {
+    return ''
+  }
+}
+
 async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
-  const track: Track = {
+  const firstArtist = raw.artists.split(',')[0].trim()
+
+  const [coverUrl] = await Promise.all([
+    fetchItunesArtwork(firstArtist, raw.name),
+  ])
+
+  return {
     id: raw.id,
     title: raw.name,
     artist: raw.artists,
@@ -33,7 +56,9 @@ async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
     album: raw.album,
     albumId: '',
     duration: Math.round(raw.duration_ms / 1000),
-    coverUrl: '',
+    coverUrl,
+    // Only use the iTunes preview stored in the DB — never fall back to a
+    // random Jamendo track (Jamendo has no mainstream artists, wrong song plays).
     audioUrl: raw.preview_url ?? '',
     genre: raw.genre,
     playCount: raw.popularity,
@@ -50,22 +75,6 @@ async function toTrack(raw: RecommendTrackRaw): Promise<Track> {
     loudness: raw.loudness,
     speechiness: raw.speechiness,
   }
-
-  try {
-    const firstArtist = raw.artists.split(',')[0].trim()
-    const hits = await fetchTracks({ search: `${firstArtist} ${raw.name}`, limit: 1 })
-    if (hits.length > 0) {
-      track.coverUrl = hits[0].image
-      // Use Jamendo audio only as fallback when backend has no iTunes preview URL
-      if (!track.audioUrl) {
-        track.audioUrl = hits[0].audio
-      }
-    }
-  } catch {
-    // enrichment is best-effort; track usable with placeholder cover
-  }
-
-  return track
 }
 
 async function enrichAll(raws: RecommendTrackRaw[]): Promise<Track[]> {

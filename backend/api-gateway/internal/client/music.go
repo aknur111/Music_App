@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 
-	musicpb "github.com/NoneNon9/Music-app-gen/music"
+	musicpb "github.com/music-app/music-service/gen/music"
 	"google.golang.org/grpc"
 )
 

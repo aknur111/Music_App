@@ -20,11 +20,16 @@ func NewSongRepository(db *pgxpool.Pool) repository.SongRepository {
 
 func (r *songRepository) GetByID(ctx context.Context, id string) (*entity.Song, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, title, artist_id, COALESCE(album_id::text,''), duration_s, COALESCE(genre,''), created_at
-		 FROM songs WHERE id = $1`, id,
+		`SELECT s.id, s.title, s.artist_id, COALESCE(a.name,''), COALESCE(s.album_id::text,''), COALESCE(al.title,''),
+		        s.duration_s, COALESCE(s.genre,''), s.created_at,
+		        COALESCE(s.cover_url,''), COALESCE(s.preview_url,'')
+		 FROM songs s
+		 LEFT JOIN artists a ON a.id = s.artist_id
+		 LEFT JOIN albums  al ON al.id = s.album_id
+		 WHERE s.id = $1`, id,
 	)
 	s := &entity.Song{}
-	err := row.Scan(&s.ID, &s.Title, &s.ArtistID, &s.AlbumID, &s.DurationS, &s.Genre, &s.CreatedAt)
+	err := row.Scan(&s.ID, &s.Title, &s.ArtistID, &s.Artist, &s.AlbumID, &s.Album, &s.DurationS, &s.Genre, &s.CreatedAt, &s.CoverUrl, &s.PreviewUrl)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -34,11 +39,15 @@ func (r *songRepository) GetByID(ctx context.Context, id string) (*entity.Song, 
 func (r *songRepository) List(ctx context.Context, artistID, albumID string, page, limit int) ([]*entity.Song, int, error) {
 	offset := (page - 1) * limit
 	rows, err := r.db.Query(ctx,
-		`SELECT id, title, artist_id, COALESCE(album_id::text,''), duration_s, COALESCE(genre,''), created_at
-		 FROM songs
-		 WHERE ($1 = '' OR artist_id::text = $1)
-		   AND ($2 = '' OR album_id::text  = $2)
-		 ORDER BY created_at DESC
+		`SELECT s.id, s.title, s.artist_id, COALESCE(a.name,''), COALESCE(s.album_id::text,''), COALESCE(al.title,''),
+		        s.duration_s, COALESCE(s.genre,''), s.created_at,
+		        COALESCE(s.cover_url,''), COALESCE(s.preview_url,'')
+		 FROM songs s
+		 LEFT JOIN artists a  ON a.id  = s.artist_id
+		 LEFT JOIN albums  al ON al.id = s.album_id
+		 WHERE ($1 = '' OR s.artist_id::text = $1)
+		   AND ($2 = '' OR s.album_id::text  = $2)
+		 ORDER BY s.created_at DESC
 		 LIMIT $3 OFFSET $4`,
 		artistID, albumID, limit, offset,
 	)
@@ -56,10 +65,14 @@ func (r *songRepository) List(ctx context.Context, artistID, albumID string, pag
 			&s.ID,
 			&s.Title,
 			&s.ArtistID,
+			&s.Artist,
 			&s.AlbumID,
+			&s.Album,
 			&s.DurationS,
 			&s.Genre,
 			&s.CreatedAt,
+			&s.CoverUrl,
+			&s.PreviewUrl,
 		); err != nil {
 			return nil, 0, err
 		}
@@ -88,10 +101,14 @@ func (r *songRepository) Search(
 
 	rows, err := r.db.Query(
 		ctx,
-		`SELECT id, title, artist_id, COALESCE(album_id::text,''), duration_s, COALESCE(genre,''), created_at
-		 FROM songs
-		 WHERE title ILIKE $1
-		 ORDER BY created_at DESC
+		`SELECT s.id, s.title, s.artist_id, COALESCE(a.name,''), COALESCE(s.album_id::text,''), COALESCE(al.title,''),
+		        s.duration_s, COALESCE(s.genre,''), s.created_at,
+		        COALESCE(s.cover_url,''), COALESCE(s.preview_url,'')
+		 FROM songs s
+		 LEFT JOIN artists a  ON a.id  = s.artist_id
+		 LEFT JOIN albums  al ON al.id = s.album_id
+		 WHERE s.title ILIKE $1
+		 ORDER BY s.created_at DESC
 		 LIMIT $2 OFFSET $3`,
 		pattern, limit, offset,
 	)
@@ -109,10 +126,14 @@ func (r *songRepository) Search(
 			&s.ID,
 			&s.Title,
 			&s.ArtistID,
+			&s.Artist,
 			&s.AlbumID,
+			&s.Album,
 			&s.DurationS,
 			&s.Genre,
 			&s.CreatedAt,
+			&s.CoverUrl,
+			&s.PreviewUrl,
 		); err != nil {
 			return nil, 0, err
 		}

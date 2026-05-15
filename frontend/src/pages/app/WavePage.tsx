@@ -190,10 +190,21 @@ export default function WavePage() {
   const handlePrev = () => {
     if (currentIdx > 0) playTrack(queue[currentIdx - 1], queue)
   }
-  const handleLike = () => {
+  const handleLike = async () => {
     if (!currentTrack) return
     toggleFav(currentTrack)
-    RecommendationService.rateTrack(currentTrack.id, 5).catch(() => {})
+    await RecommendationService.rateTrack(currentTrack.id, 5).catch(() => {})
+    // After a like the taste profile has changed — replace upcoming tracks with a
+    // fresh batch so the queue immediately reflects the updated preference.
+    const fresh = await RecommendationService.getMyWave(
+      mood, 20, [...playedIdsRef.current, currentTrack.id]
+    ).catch(() => [] as typeof queue)
+    if (fresh.length === 0) return
+    setQueue(prev => {
+      const keep = prev.slice(0, currentIdx + 1)
+      const seen = new Set(keep.map(t => t.id))
+      return [...keep, ...fresh.filter(t => !seen.has(t.id))]
+    })
   }
 
   const liked = currentTrack ? isLiked(currentTrack.id) : false

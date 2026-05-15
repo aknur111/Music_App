@@ -154,7 +154,7 @@ export const PlayerBar: React.FC = () => {
                   }}
                 >
                   <motion.img
-                    src={currentTrack.coverUrl || '/placeholder-cover.png'}
+                    src={currentTrack.coverUrl || '/placeholder-cover.svg'}
                     alt={typeof currentTrack.album === 'string' ? currentTrack.album : (currentTrack.album as { title?: string })?.title ?? ''}
                     className="w-full h-full object-cover"
                     animate={{ rotate: isPlaying ? 360 : 0 }}

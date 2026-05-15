@@ -128,6 +128,8 @@ func (r *trackRepository) GetCandidatesForMood(ctx context.Context, _ entity.Moo
 // The usecase re-ranks results by exact 4D cosine similarity.
 // Bounds are pre-computed in Go to avoid PostgreSQL "operator is not unique" errors
 // that arise when arithmetic is performed on untyped query parameters.
+// Only tracks with a non-empty preview_url are returned — tracks without audio
+// are useless to the player and would surface as silent entries.
 func (r *trackRepository) GetTopByFeatureProximity(ctx context.Context, vector [4]float64, limit int) ([]*entity.Track, error) {
 	const window = 0.2
 	const minPopularity = 30
@@ -136,9 +138,10 @@ func (r *trackRepository) GetTopByFeatureProximity(ctx context.Context, vector [
 	rows, err := r.db.Query(ctx,
 		`SELECT id, spotify_id, name, artists, album, genre, duration_ms, popularity,
 		        valence, energy, danceability, tempo, acousticness, instrumentalness, loudness, speechiness,
-		        COALESCE(preview_url, '')
+		        preview_url
 		 FROM tracks
 		 WHERE popularity >= $1
+		   AND preview_url IS NOT NULL AND preview_url != ''
 		   AND valence      BETWEEN $2 AND $3
 		   AND energy       BETWEEN $4 AND $5
 		   AND danceability BETWEEN $6 AND $7

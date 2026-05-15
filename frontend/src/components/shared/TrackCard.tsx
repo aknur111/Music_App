@@ -163,7 +163,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       {/* Album art */}
       <div className="relative w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden">
         <img
-          src={track.coverUrl || '/placeholder-cover.png'}
+          src={track.coverUrl || '/placeholder-cover.svg'}
           alt={track.album}
           className={clsx(
             'w-full h-full object-cover transition-transform duration-300',
