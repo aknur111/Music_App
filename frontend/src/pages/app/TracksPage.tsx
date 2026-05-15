@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Heart, Search, Music2, ListPlus } from 'lucide-react'
+import { Play, Heart, Search, Music2, ListPlus, Plus } from 'lucide-react'
 import { MusicService } from '@/services'
 import { formatDuration, formatCount, cn } from '@/lib/utils'
 import { usePlayerStore } from '@/store/playerStore'
@@ -12,7 +12,7 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.03 } } }
 const row = { hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }
 
 export default function TracksPage() {
-  const { playTrack, currentTrack, isPlaying } = usePlayerStore()
+  const { playTrack, currentTrack, isPlaying, addToQueue } = usePlayerStore()
   const { isLiked, toggle: toggleFav } = useFavoritesStore()
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,7 +20,7 @@ export default function TracksPage() {
   const [playlistTrack, setPlaylistTrack] = useState<Track | null>(null)
 
   useEffect(() => {
-    MusicService.getTracks(1, 50).then(setTracks).finally(() => setLoading(false))
+    MusicService.getTracks(1, 500).then(setTracks).finally(() => setLoading(false))
   }, [])
 
   const filtered = tracks.filter(
@@ -40,7 +40,7 @@ export default function TracksPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-white tracking-tight">Tracks</h1>
-          <p className="text-white/40 text-sm mt-0.5">{tracks.length} songs from Jamendo</p>
+          <p className="text-white/40 text-sm mt-0.5">{tracks.length} songs</p>
         </div>
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
@@ -55,7 +55,7 @@ export default function TracksPage() {
       </div>
 
       {/* Column headers */}
-      <div className="grid grid-cols-[2.5rem_1fr_1fr_5rem_4rem_3rem] gap-4 px-3 text-[11px] text-white/25 font-semibold uppercase tracking-wider border-b border-white/[0.05] pb-2.5">
+      <div className="grid grid-cols-[2.5rem_1fr_1fr_5rem_4rem_5rem] gap-4 px-3 text-[11px] text-white/25 font-semibold uppercase tracking-wider border-b border-white/[0.05] pb-2.5">
         <span className="text-center">#</span>
         <span>Title</span>
         <span>Album</span>
@@ -81,7 +81,7 @@ export default function TracksPage() {
                 variants={row}
                 onClick={() => playTrack(track, filtered)}
                 className={cn(
-                  'grid grid-cols-[2.5rem_1fr_1fr_5rem_4rem_3rem] gap-4 px-3 py-2.5 rounded-xl transition-all duration-150 group cursor-pointer items-center',
+                  'grid grid-cols-[2.5rem_1fr_1fr_5rem_4rem_5rem] gap-4 px-3 py-2.5 rounded-xl transition-all duration-150 group cursor-pointer items-center',
                   isActive ? 'bg-violet-500/10 border border-violet-500/15' : 'hover:bg-white/[0.04] border border-transparent',
                 )}
               >
@@ -128,7 +128,15 @@ export default function TracksPage() {
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-1">
                   <button
+                    onClick={(e) => { e.stopPropagation(); addToQueue(track) }}
+                    title="Add to queue"
+                    className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-white/30 hover:text-cyan-400 hover:bg-white/5 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); setPlaylistTrack(track) }}
+                    title="Add to playlist"
                     className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md text-white/30 hover:text-violet-400 hover:bg-white/5 transition-all"
                   >
                     <ListPlus className="w-3.5 h-3.5" />
