@@ -37,7 +37,7 @@ func (s *Server) ListSongs(ctx context.Context, req *pb.ListSongsRequest) (*pb.L
 	if page < 1 {
 		page = 1
 	}
-	if limit < 1 || limit > 100 {
+	if limit < 1 || limit > 500 {
 		limit = 20
 	}
 
@@ -58,7 +58,7 @@ func (s *Server) SearchSongs(ctx context.Context, req *pb.SearchSongsRequest) (*
 	if page < 1 {
 		page = 1
 	}
-	if limit < 1 || limit > 100 {
+	if limit < 1 || limit > 500 {
 		limit = 20
 	}
 
