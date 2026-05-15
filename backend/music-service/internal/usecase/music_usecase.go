@@ -210,6 +210,8 @@ func (u *musicUsecase) CreateAlbum(
 		return nil, errors.New("artist_id is required")
 	}
 
+	album.ID = uuid.New().String()
+
 	if err := u.albums.Create(
 		ctx,
 		album,

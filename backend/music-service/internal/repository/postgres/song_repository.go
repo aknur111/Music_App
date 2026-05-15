@@ -146,7 +146,7 @@ func (r *songRepository) Create(ctx context.Context, s *entity.Song) error {
 		   duration_s,
 		   genre
 		 )
-		 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+		 VALUES ($1,$2,$3,$4,NULLIF($5, '')::uuid,$6,$7)`,
 		s.ID,
 		s.Title,
 		s.ArtistID,

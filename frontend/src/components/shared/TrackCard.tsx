@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play,
@@ -8,6 +8,8 @@ import {
   ListPlus,
   PlusCircle,
   Radio,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { SimilarTracksModal } from '@/components/shared/SimilarTracksModal';
 import { AddToPlaylistModal } from '@/components/shared/AddToPlaylistModal';
@@ -27,6 +29,8 @@ interface TrackCardProps {
   onAddToQueue?: (track: Track) => void;
   onAddToPlaylist?: (track: Track) => void;
   onLike?: (track: Track) => void;
+  onEdit?: (track: Track) => void;
+  onDelete?: (track: Track) => void;
   className?: string;
 }
 
@@ -46,6 +50,8 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   onAddToQueue,
   onAddToPlaylist,
   onLike,
+  onEdit,
+  onDelete,
   className,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -53,6 +59,24 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   const [similarOpen, setSimilarOpen] = useState(false);
   const [playlistModalOpen, setPlaylistModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [menuOpen]);
 
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayerStore();
   const { isLiked, toggle: toggleFav } = useFavoritesStore();
@@ -76,12 +100,13 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       whileHover={{ scale: 1.01 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       className={clsx(
-        'group flex items-center gap-3 p-2.5 rounded-xl transition-colors duration-200 cursor-pointer relative',
-        isActive
-          ? 'bg-violet-500/10 border border-violet-500/20'
-          : 'hover:bg-white/5 border border-transparent',
-        className
-      )}
+  'group flex items-center gap-3 p-2.5 rounded-xl transition-colors duration-200 cursor-pointer relative',
+  isActive
+    ? 'bg-violet-500/10 border border-violet-500/20'
+    : 'hover:bg-white/5 border border-transparent',
+  menuOpen ? 'z-50' : 'z-0',
+  className
+)}
     >
       {/* Index / Playing indicator */}
       <div className="w-8 flex-shrink-0 flex items-center justify-center">
@@ -202,7 +227,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
           </motion.button>
         )}
 
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -221,19 +246,53 @@ export const TrackCard: React.FC<TrackCardProps> = ({
           <AnimatePresence>
             {menuOpen && (
               <motion.div
-                ref={menuRef}
                 initial={{ opacity: 0, scale: 0.9, y: -4 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: -4 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 className="absolute right-0 top-9 z-50 w-44 bg-[#1a1a2e] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/50 overflow-hidden"
-                onMouseLeave={() => setMenuOpen(false)}
               >
                 {[
-                  { label: 'Add to Queue', icon: ListPlus, action: () => onAddToQueue?.(track) },
-                  { label: 'Add to Playlist', icon: PlusCircle, action: () => { onAddToPlaylist?.(track); setPlaylistModalOpen(true); } },
-                  { label: liked ? 'Unlike' : 'Like', icon: Heart, action: () => { toggleFav(track); onLike?.(track); } },
-                ].map(({ label, icon: Icon, action }) => (
+  {
+    label: 'Add to Queue',
+    icon: ListPlus,
+    action: () => onAddToQueue?.(track),
+  },
+  {
+    label: 'Add to Playlist',
+    icon: PlusCircle,
+    action: () => {
+      onAddToPlaylist?.(track);
+      setPlaylistModalOpen(true);
+    },
+  },
+  {
+    label: liked ? 'Unlike' : 'Like',
+    icon: Heart,
+    action: () => {
+      toggleFav(track);
+      onLike?.(track);
+    },
+  },
+  ...(onEdit
+    ? [
+        {
+          label: 'Edit',
+          icon: Pencil,
+          action: () => onEdit(track),
+        },
+      ]
+    : []),
+  ...(onDelete
+    ? [
+        {
+          label: 'Delete',
+          icon: Trash2,
+          action: () => onDelete(track),
+        },
+      ]
+    : []),
+].map(({ label, icon: Icon, action }) => (
                   <button
                     key={label}
                     onClick={(e) => {

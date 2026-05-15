@@ -37,6 +37,10 @@ type Clients struct {
 	ListPlaylists  func(ctx context.Context, userID string, page, limit int) (interface{}, error)
 	AddSong        func(ctx context.Context, playlistID, songID, userID, title, artist, coverURL, audioURL string, durationS int) (int, error)
 	RemoveSong     func(ctx context.Context, playlistID, songID, userID string) error
+	CreateSong     func(ctx context.Context, title, artistID, albumID string, duration int, genre string) (interface{}, error)
+	UpdateSong     func(ctx context.Context, songID, title, albumID string, duration int, genre string) (interface{}, error)
+	DeleteSong     func(ctx context.Context, songID string) (interface{}, error)
+	CreateAlbum    func(ctx context.Context, title, artistID string, year int) (interface{}, error)
 
 	GetRecommendationsByMood   func(ctx context.Context, mood string, limit int32) (interface{}, error)
 	GetMoodRadio               func(ctx context.Context, mood string) (interface{}, error)
@@ -56,7 +60,7 @@ type Clients struct {
 	ListMyPayments    func(ctx context.Context, userID string) (interface{}, error)
 	GetMySubscription func(ctx context.Context, userID string) (interface{}, error)
 	HandleCallback    func(ctx context.Context, providerID, paymentID, providerRef string, success bool, rawBody string) (interface{}, error)
-	AddCollaborator func(ctx context.Context, playlistID, ownerID, collaboratorID string) error
+	AddCollaborator   func(ctx context.Context, playlistID, ownerID, collaboratorID string) error
 }
 
 func Router(clients *Clients) http.Handler {
@@ -108,12 +112,16 @@ func Router(clients *Clients) http.Handler {
 
 	r.Route("/api/v1/music", func(r chi.Router) {
 
-		r.Get("/songs/{id}", getSongHandler(clients))
+		r.Get("/songs/{song_id}", getSongHandler(clients))
 		r.Get("/songs", listSongsHandler(clients))
 		r.Get("/songs/search", searchSongsHandler(clients))
+		r.Post("/songs", createSongHandler(clients))
+		r.Put("/songs/{song_id}", updateSongHandler(clients))
+		r.Delete("/songs/{song_id}", deleteSongHandler(clients))
 
-		r.Get("/albums/{id}", getAlbumHandler(clients))
+		r.Get("/albums/{album_id}", getAlbumHandler(clients))
 		r.Get("/albums", listAlbumsHandler(clients))
+		r.Post("/albums", createAlbumHandler(clients))
 
 		r.Get("/artists/{id}", getArtistHandler(clients))
 		r.Get("/artists", listArtistsHandler(clients))
@@ -986,6 +994,167 @@ func uploadSongHandler(c *Clients) http.HandlerFunc {
 			req.DurationS,
 			req.Genre,
 			req.UploaderID,
+		)
+
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+
+		writeJSON(w, http.StatusCreated, res)
+	}
+}
+func createSongHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.CreateSong == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+				"error": "music service unavailable",
+			})
+			return
+		}
+
+		var req struct {
+			Title     string `json:"title"`
+			ArtistID  string `json:"artist_id"`
+			AlbumID   string `json:"album_id"`
+			DurationS int    `json:"duration_s"`
+			Genre     string `json:"genre"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "invalid request body",
+			})
+			return
+		}
+
+		if strings.TrimSpace(req.Title) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "title is required",
+			})
+			return
+		}
+
+		res, err := c.CreateSong(
+			r.Context(),
+			req.Title,
+			req.ArtistID,
+			req.AlbumID,
+			req.DurationS,
+			req.Genre,
+		)
+
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+
+		writeJSON(w, http.StatusCreated, res)
+	}
+}
+
+func updateSongHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.UpdateSong == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+				"error": "music service unavailable",
+			})
+			return
+		}
+
+		songID := chi.URLParam(r, "song_id")
+
+		var req struct {
+			Title     string `json:"title"`
+			AlbumID   string `json:"album_id"`
+			DurationS int    `json:"duration_s"`
+			Genre     string `json:"genre"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "invalid request body",
+			})
+			return
+		}
+
+		res, err := c.UpdateSong(
+			r.Context(),
+			songID,
+			req.Title,
+			req.AlbumID,
+			req.DurationS,
+			req.Genre,
+		)
+
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, res)
+	}
+}
+
+func deleteSongHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.DeleteSong == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+				"error": "music service unavailable",
+			})
+			return
+		}
+
+		songID := chi.URLParam(r, "song_id")
+
+		res, err := c.DeleteSong(
+			r.Context(),
+			songID,
+		)
+
+		if err != nil {
+			writeGRPCError(w, err)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, res)
+	}
+}
+
+func createAlbumHandler(c *Clients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c.CreateAlbum == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+				"error": "music service unavailable",
+			})
+			return
+		}
+
+		var req struct {
+			Title    string `json:"title"`
+			ArtistID string `json:"artist_id"`
+			Year     int    `json:"year"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "invalid request body",
+			})
+			return
+		}
+
+		if strings.TrimSpace(req.Title) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "title is required",
+			})
+			return
+		}
+
+		res, err := c.CreateAlbum(
+			r.Context(),
+			req.Title,
+			req.ArtistID,
+			req.Year,
 		)
 
 		if err != nil {
