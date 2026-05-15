@@ -37,7 +37,7 @@ func (s *Server) ListSongs(ctx context.Context, req *pb.ListSongsRequest) (*pb.L
 	if page < 1 {
 		page = 1
 	}
-	if limit < 1 || limit > 100 {
+	if limit < 1 || limit > 500 {
 		limit = 20
 	}
 
@@ -58,7 +58,7 @@ func (s *Server) SearchSongs(ctx context.Context, req *pb.SearchSongsRequest) (*
 	if page < 1 {
 		page = 1
 	}
-	if limit < 1 || limit > 100 {
+	if limit < 1 || limit > 500 {
 		limit = 20
 	}
 
@@ -358,13 +358,17 @@ func (s *Server) DeleteSong(
 
 func songToProto(s *entity.Song) *pb.Song {
 	return &pb.Song{
-		Id:        s.ID,
-		Title:     s.Title,
-		ArtistId:  s.ArtistID,
-		AlbumId:   s.AlbumID,
-		DurationS: int32(s.DurationS),
-		Genre:     s.Genre,
-		CreatedAt: timestamppb.New(s.CreatedAt),
+		Id:         s.ID,
+		Title:      s.Title,
+		ArtistId:   s.ArtistID,
+		Artist:     s.Artist,
+		AlbumId:    s.AlbumID,
+		Album:      s.Album,
+		DurationS:  int32(s.DurationS),
+		Genre:      s.Genre,
+		CreatedAt:  timestamppb.New(s.CreatedAt),
+		CoverUrl:   s.CoverUrl,
+		PreviewUrl: s.PreviewUrl,
 	}
 }
 
@@ -373,7 +377,9 @@ func albumToProto(a *entity.Album) *pb.Album {
 		Id:       a.ID,
 		Title:    a.Title,
 		ArtistId: a.ArtistID,
+		Artist:   a.Artist,
 		Year:     int32(a.Year),
+		CoverUrl: a.CoverUrl,
 	}
 }
 
@@ -386,5 +392,6 @@ func artistToProto(
 		Name:      a.Name,
 		Bio:       a.Bio,
 		CreatedAt: a.CreatedAt.Unix(),
+		AvatarUrl: a.AvatarUrl,
 	}
 }

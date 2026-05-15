@@ -154,6 +154,7 @@ type Album struct {
 	Artist        string                 `protobuf:"bytes,4,opt,name=artist,proto3" json:"artist,omitempty"`
 	Year          int32                  `protobuf:"varint,5,opt,name=year,proto3" json:"year,omitempty"`
 	Songs         []*Song                `protobuf:"bytes,6,rep,name=songs,proto3" json:"songs,omitempty"`
+	CoverUrl      string                 `protobuf:"bytes,7,opt,name=cover_url,json=coverUrl,proto3" json:"cover_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -230,12 +231,20 @@ func (x *Album) GetSongs() []*Song {
 	return nil
 }
 
+func (x *Album) GetCoverUrl() string {
+	if x != nil {
+		return x.CoverUrl
+	}
+	return ""
+}
+
 type Artist struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Bio           string                 `protobuf:"bytes,3,opt,name=bio,proto3" json:"bio,omitempty"`
 	CreatedAt     int64                  `protobuf:"varint,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	AvatarUrl     string                 `protobuf:"bytes,5,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -296,6 +305,13 @@ func (x *Artist) GetCreatedAt() int64 {
 		return x.CreatedAt
 	}
 	return 0
+}
+
+func (x *Artist) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
 }
 
 type Pagination struct {
@@ -1406,20 +1422,23 @@ const file_music_music_proto_rawDesc = "" +
 	"\vpreview_url\x18\n" +
 	" \x01(\tR\n" +
 	"previewUrl\x12\x1b\n" +
-	"\tcover_url\x18\v \x01(\tR\bcoverUrl\"\x99\x01\n" +
+	"\tcover_url\x18\v \x01(\tR\bcoverUrl\"\xb6\x01\n" +
 	"\x05Album\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1b\n" +
 	"\tartist_id\x18\x03 \x01(\tR\bartistId\x12\x16\n" +
 	"\x06artist\x18\x04 \x01(\tR\x06artist\x12\x12\n" +
 	"\x04year\x18\x05 \x01(\x05R\x04year\x12!\n" +
-	"\x05songs\x18\x06 \x03(\v2\v.music.SongR\x05songs\"]\n" +
+	"\x05songs\x18\x06 \x03(\v2\v.music.SongR\x05songs\x12\x1b\n" +
+	"\tcover_url\x18\a \x01(\tR\bcoverUrl\"|\n" +
 	"\x06Artist\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x10\n" +
 	"\x03bio\x18\x03 \x01(\tR\x03bio\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x04 \x01(\x03R\tcreatedAt\"6\n" +
+	"created_at\x18\x04 \x01(\x03R\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\x05 \x01(\tR\tavatarUrl\"6\n" +
 	"\n" +
 	"Pagination\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x14\n" +

@@ -13,6 +13,8 @@ import {
   Volume1,
   ListMusic,
   Maximize2,
+  X,
+  Music2,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { usePlayerStore } from '@/store/playerStore';
@@ -38,6 +40,8 @@ export const PlayerBar: React.FC = () => {
     progress,
     isQueueOpen,
     dominantColor,
+    queue,
+    queueIndex,
     togglePlay,
     setVolume,
     toggleMute,
@@ -48,6 +52,9 @@ export const PlayerBar: React.FC = () => {
     seekTo,
     toggleQueue,
     toggleFullscreen,
+    removeFromQueue,
+    playTrack,
+    clearQueue,
   } = usePlayerStore();
 
   const [isDragging, setIsDragging] = useState(false);
@@ -108,6 +115,7 @@ export const PlayerBar: React.FC = () => {
   const VolumeIcon = effectiveVolume === 0 ? VolumeX : effectiveVolume < 0.5 ? Volume1 : Volume2;
 
   return (
+    <>
     <div className="fixed bottom-0 left-0 right-0 z-40">
       {/* Top animated gradient border */}
       <motion.div
@@ -154,7 +162,7 @@ export const PlayerBar: React.FC = () => {
                   }}
                 >
                   <motion.img
-                    src={currentTrack.coverUrl || '/placeholder-cover.png'}
+                    src={currentTrack.coverUrl || '/placeholder-cover.svg'}
                     alt={typeof currentTrack.album === 'string' ? currentTrack.album : (currentTrack.album as { title?: string })?.title ?? ''}
                     className="w-full h-full object-cover"
                     animate={{ rotate: isPlaying ? 360 : 0 }}
@@ -416,5 +424,80 @@ export const PlayerBar: React.FC = () => {
         </div>
       </div>
     </div>
+
+    {/* Queue panel */}
+
+    <AnimatePresence>
+      {isQueueOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+          className="fixed bottom-24 right-4 w-80 max-h-[60vh] bg-[#13131f]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50"
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+            <div>
+              <p className="text-sm font-semibold text-white">Queue</p>
+              <p className="text-xs text-white/40">{queue.length} tracks</p>
+            </div>
+            <div className="flex gap-2">
+              {queue.length > 0 && (
+                <button
+                  onClick={clearQueue}
+                  className="text-xs text-white/30 hover:text-white/60 transition-colors px-2 py-1 rounded-lg hover:bg-white/5"
+                >
+                  Clear
+                </button>
+              )}
+              <button onClick={toggleQueue} className="w-6 h-6 flex items-center justify-center rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-y-auto flex-1 py-2">
+            {queue.length === 0 ? (
+              <div className="flex flex-col items-center py-10 gap-2">
+                <Music2 className="w-8 h-8 text-white/10" />
+                <p className="text-xs text-white/25">Queue is empty</p>
+              </div>
+            ) : (
+              queue.map((track, i) => {
+                const isActive = i === queueIndex
+                return (
+                  <div
+                    key={`${track.id}-${i}`}
+                    className={clsx(
+                      'flex items-center gap-3 px-3 py-2 mx-2 rounded-xl group transition-colors cursor-pointer',
+                      isActive ? 'bg-violet-500/15' : 'hover:bg-white/[0.04]'
+                    )}
+                    onClick={() => playTrack(track, queue)}
+                  >
+                    <div className="w-8 h-8 flex-shrink-0 rounded-lg overflow-hidden">
+                      {track.coverUrl
+                        ? <img src={track.coverUrl} alt="" className="w-full h-full object-cover" />
+                        : <div className="w-full h-full bg-violet-900/30 flex items-center justify-center"><Music2 className="w-3.5 h-3.5 text-violet-400/50" /></div>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={clsx('text-xs font-medium truncate', isActive ? 'text-violet-300' : 'text-white/80')}>{track.title}</p>
+                      <p className="text-[11px] text-white/35 truncate">{track.artist}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeFromQueue(i) }}
+                      className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-white/25 hover:text-white/60 transition-all"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 };

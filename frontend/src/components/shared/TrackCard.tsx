@@ -78,7 +78,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
     };
   }, [menuOpen]);
 
-  const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayerStore();
+  const { currentTrack, isPlaying, togglePlay, playTrack, addToQueue } = usePlayerStore();
   const { isLiked, toggle: toggleFav } = useFavoritesStore();
   const isActive = currentTrack?.id === track.id;
   const liked = isLiked(track.id);
@@ -163,7 +163,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       {/* Album art */}
       <div className="relative w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden">
         <img
-          src={track.coverUrl || '/placeholder-cover.png'}
+          src={track.coverUrl || '/placeholder-cover.svg'}
           alt={track.album}
           className={clsx(
             'w-full h-full object-cover transition-transform duration-300',
@@ -256,7 +256,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   {
     label: 'Add to Queue',
     icon: ListPlus,
-    action: () => onAddToQueue?.(track),
+    action: () => { addToQueue(track); onAddToQueue?.(track); },
   },
   {
     label: 'Add to Playlist',

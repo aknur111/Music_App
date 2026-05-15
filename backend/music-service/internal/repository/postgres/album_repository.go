@@ -20,10 +20,13 @@ func NewAlbumRepository(db *pgxpool.Pool) repository.AlbumRepository {
 
 func (r *albumRepository) GetByID(ctx context.Context, id string) (*entity.Album, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, title, artist_id, year, created_at FROM albums WHERE id = $1`, id,
+		`SELECT al.id, al.title, al.artist_id, COALESCE(a.name,''), al.year, al.created_at, COALESCE(al.cover_url,'')
+		 FROM albums al
+		 LEFT JOIN artists a ON a.id = al.artist_id
+		 WHERE al.id = $1`, id,
 	)
 	a := &entity.Album{}
-	err := row.Scan(&a.ID, &a.Title, &a.ArtistID, &a.Year, &a.CreatedAt)
+	err := row.Scan(&a.ID, &a.Title, &a.ArtistID, &a.Artist, &a.Year, &a.CreatedAt, &a.CoverUrl)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -40,8 +43,9 @@ func (r *albumRepository) List(
 	offset := (page - 1) * limit
 
 	query := `
-		SELECT id, title, artist_id, year, created_at
-		FROM albums
+		SELECT al.id, al.title, al.artist_id, COALESCE(a.name,''), al.year, al.created_at, COALESCE(al.cover_url,'')
+		FROM albums al
+		LEFT JOIN artists a ON a.id = al.artist_id
 	`
 
 	countQuery := `
@@ -53,7 +57,7 @@ func (r *albumRepository) List(
 	countArgs := []any{}
 
 	if artistID != "" {
-		query += ` WHERE artist_id = $1`
+		query += ` WHERE al.artist_id = $1`
 		countQuery += ` WHERE artist_id = $1`
 
 		args = append(args, artistID)
@@ -61,7 +65,7 @@ func (r *albumRepository) List(
 	}
 
 	query += `
-		ORDER BY year DESC, title
+		ORDER BY al.year DESC, al.title
 		LIMIT $` + func() string {
 		if artistID != "" {
 			return "2"
@@ -97,8 +101,10 @@ func (r *albumRepository) List(
 			&a.ID,
 			&a.Title,
 			&a.ArtistID,
+			&a.Artist,
 			&a.Year,
 			&a.CreatedAt,
+			&a.CoverUrl,
 		); err != nil {
 
 			return nil, 0, err

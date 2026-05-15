@@ -7,6 +7,7 @@ var allowedOrigins = map[string]bool{
 	"http://localhost:3001": true,
 	"http://localhost:5173": true,
 	"http://localhost:5174": true,
+	"http://localhost:5175": true,
 }
 
 // CORS adds the necessary headers for browser cross-origin requests and

@@ -318,7 +318,7 @@ export const Sidebar: React.FC = () => {
           >
             <div className="w-9 h-9 rounded-lg overflow-hidden border border-violet-500/40 shadow-lg shadow-violet-900/30">
               <img
-                src={currentTrack.coverUrl || '/placeholder-cover.png'}
+                src={currentTrack.coverUrl || '/placeholder-cover.svg'}
                 alt=""
                 className="w-full h-full object-cover"
               />

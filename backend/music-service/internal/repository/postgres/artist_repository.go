@@ -28,7 +28,7 @@ func (r *artistRepository) GetByID(
 
 	row := r.db.QueryRow(
 		ctx,
-		`SELECT id, name, bio, created_at
+		`SELECT id, name, COALESCE(bio,''), COALESCE(avatar_url,''), created_at
 		 FROM artists
 		 WHERE id = $1`,
 		id,
@@ -40,6 +40,7 @@ func (r *artistRepository) GetByID(
 		&a.ID,
 		&a.Name,
 		&a.Bio,
+		&a.AvatarUrl,
 		&a.CreatedAt,
 	)
 
@@ -59,7 +60,7 @@ func (r *artistRepository) List(
 
 	rows, err := r.db.Query(
 		ctx,
-		`SELECT id, name, bio, created_at
+		`SELECT id, name, COALESCE(bio,''), COALESCE(avatar_url,''), created_at
 		 FROM artists
 		 ORDER BY name
 		 LIMIT $1 OFFSET $2`,
@@ -82,6 +83,7 @@ func (r *artistRepository) List(
 			&a.ID,
 			&a.Name,
 			&a.Bio,
+			&a.AvatarUrl,
 			&a.CreatedAt,
 		); err != nil {
 			return nil, 0, err
@@ -110,7 +112,7 @@ func (r *artistRepository) Search(
 
 	rows, err := r.db.Query(
 		ctx,
-		`SELECT id, name, bio, created_at
+		`SELECT id, name, COALESCE(bio,''), COALESCE(avatar_url,''), created_at
 		 FROM artists
 		 WHERE name ILIKE '%' || $1 || '%'
 		 ORDER BY name
@@ -135,6 +137,7 @@ func (r *artistRepository) Search(
 			&a.ID,
 			&a.Name,
 			&a.Bio,
+			&a.AvatarUrl,
 			&a.CreatedAt,
 		); err != nil {
 			return nil, 0, err

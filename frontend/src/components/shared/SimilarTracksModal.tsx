@@ -126,7 +126,7 @@ export const SimilarTracksModal: React.FC<SimilarTracksModalProps> = ({
                   >
                     <div className="relative w-9 h-9 flex-shrink-0 rounded-lg overflow-hidden bg-white/5">
                       <img
-                        src={track.coverUrl || '/placeholder-cover.png'}
+                        src={track.coverUrl || '/placeholder-cover.svg'}
                         alt={track.album}
                         className="w-full h-full object-cover"
                       />

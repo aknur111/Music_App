@@ -123,7 +123,7 @@ func Router(clients *Clients) http.Handler {
 		r.Get("/albums", listAlbumsHandler(clients))
 		r.Post("/albums", createAlbumHandler(clients))
 
-		r.Get("/artists/{id}", getArtistHandler(clients))
+		r.Get("/artists/{artist_id}", getArtistHandler(clients))
 		r.Get("/artists", listArtistsHandler(clients))
 		r.Get("/artists/search", searchArtistsHandler(clients))
 
@@ -919,9 +919,13 @@ func myWaveHandler(c *Clients) http.HandlerFunc {
 
 func getArtistHandler(c *Clients) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "artist_id")
+		if id == "" {
+			id = chi.URLParam(r, "id")
+		}
 		res, err := c.GetArtist(
 			r.Context(),
-			chi.URLParam(r, "id"),
+			id,
 		)
 		if err != nil {
 			writeGRPCError(w, err)

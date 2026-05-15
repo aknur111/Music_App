@@ -200,6 +200,7 @@ services:
       REDIS_PORT: "6379"
       NATS_URL: nats://nats:4222
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      MUSIC_SERVICE_ADDR: music-service:50052
     depends_on:
       postgres-playlist:
         condition: service_healthy
