@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/music-app/payment-service/internal/provider"
 )
 
@@ -37,9 +39,10 @@ type Config struct {
 type halykProvider struct {
 	cfg    Config
 	client *http.Client
+	log    *zap.Logger
 }
 
-func New(cfg Config) provider.Provider {
+func New(cfg Config, log *zap.Logger) provider.Provider {
 	if cfg.OAuthURL == "" {
 		cfg.OAuthURL = TestOAuthURL
 	}
@@ -49,9 +52,13 @@ func New(cfg Config) provider.Provider {
 	if cfg.PortalURL == "" {
 		cfg.PortalURL = TestPortalURL
 	}
+	if log == nil {
+		log = zap.NewNop()
+	}
 	return &halykProvider{
 		cfg:    cfg,
 		client: &http.Client{Timeout: 30 * time.Second},
+		log:    log,
 	}
 }
 
@@ -66,6 +73,9 @@ func (h *halykProvider) getToken(ctx context.Context) (string, error) {
 	body.Set("grant_type", "client_credentials")
 	body.Set("scope", "webapi usermanagement email_send verification statement statistics payment")
 
+	start := time.Now()
+	h.log.Info("halyk: acquiring oauth token", zap.String("url", h.cfg.OAuthURL))
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		h.cfg.OAuthURL, strings.NewReader(body.Encode()))
 	if err != nil {
@@ -76,12 +86,21 @@ func (h *halykProvider) getToken(ctx context.Context) (string, error) {
 
 	resp, err := h.client.Do(req)
 	if err != nil {
+		h.log.Error("halyk: oauth token request failed",
+			zap.Error(err),
+			zap.Duration("elapsed", time.Since(start)),
+		)
 		return "", fmt.Errorf("halyk: auth request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		raw, _ := io.ReadAll(resp.Body)
+		h.log.Error("halyk: oauth token non-200 response",
+			zap.Int("status", resp.StatusCode),
+			zap.String("body", string(raw)),
+			zap.Duration("elapsed", time.Since(start)),
+		)
 		return "", fmt.Errorf("halyk: auth failed with status %d: %s", resp.StatusCode, raw)
 	}
 
@@ -89,6 +108,7 @@ func (h *halykProvider) getToken(ctx context.Context) (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {
 		return "", fmt.Errorf("halyk: decode auth response: %w", err)
 	}
+	h.log.Info("halyk: oauth token acquired", zap.Duration("elapsed", time.Since(start)))
 	return tr.AccessToken, nil
 }
 
@@ -132,8 +152,15 @@ func (h *halykProvider) CreateCheckout(ctx context.Context, req provider.Checkou
 		return provider.CheckoutResponse{}, fmt.Errorf("halyk: marshal create invoice: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		h.cfg.APIURL+"/api/invoice", bytes.NewReader(body))
+	invoiceURL := h.cfg.APIURL + "/api/invoice/create"
+	start := time.Now()
+	h.log.Info("halyk: creating invoice",
+		zap.String("url", invoiceURL),
+		zap.String("payment_id", req.PaymentID),
+		zap.Float64("amount_kzt", payload.Amount),
+	)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, invoiceURL, bytes.NewReader(body))
 	if err != nil {
 		return provider.CheckoutResponse{}, fmt.Errorf("halyk: build create invoice request: %w", err)
 	}
@@ -142,17 +169,27 @@ func (h *halykProvider) CreateCheckout(ctx context.Context, req provider.Checkou
 
 	resp, err := h.client.Do(httpReq)
 	if err != nil {
+		h.log.Error("halyk: invoice creation request failed",
+			zap.Error(err),
+			zap.Duration("elapsed", time.Since(start)),
+		)
 		return provider.CheckoutResponse{}, fmt.Errorf("halyk: create invoice request: %w", err)
 	}
 	defer resp.Body.Close()
 
+	raw, _ := io.ReadAll(resp.Body)
+
 	if resp.StatusCode != http.StatusOK {
-		raw, _ := io.ReadAll(resp.Body)
+		h.log.Error("halyk: invoice creation non-200 response",
+			zap.Int("status", resp.StatusCode),
+			zap.String("body", string(raw)),
+			zap.Duration("elapsed", time.Since(start)),
+		)
 		return provider.CheckoutResponse{}, fmt.Errorf("halyk: create invoice failed with status %d: %s", resp.StatusCode, raw)
 	}
 
 	var cr createInvoiceResponse
-	if err := json.NewDecoder(resp.Body).Decode(&cr); err != nil {
+	if err := json.Unmarshal(raw, &cr); err != nil {
 		return provider.CheckoutResponse{}, fmt.Errorf("halyk: decode create invoice response: %w", err)
 	}
 
@@ -160,10 +197,21 @@ func (h *halykProvider) CreateCheckout(ctx context.Context, req provider.Checkou
 	if invoiceID == "" {
 		invoiceID = cr.ID
 	}
+	if invoiceID == "" {
+		h.log.Error("halyk: invoice creation response missing id", zap.String("body", string(raw)))
+		return provider.CheckoutResponse{}, fmt.Errorf("halyk: create invoice response missing id: %s", raw)
+	}
+
+	checkoutURL := fmt.Sprintf("%s/?invoice=%s", h.cfg.PortalURL, invoiceID)
+	h.log.Info("halyk: invoice created",
+		zap.String("invoice_id", invoiceID),
+		zap.String("checkout_url", checkoutURL),
+		zap.Duration("elapsed", time.Since(start)),
+	)
 
 	return provider.CheckoutResponse{
 		ProviderRef: invoiceID,
-		CheckoutURL: fmt.Sprintf("%s/?invoice=%s", h.cfg.PortalURL, invoiceID),
+		CheckoutURL: checkoutURL,
 	}, nil
 }
 
