@@ -32,8 +32,8 @@ func Load() *Config {
 		RedisPass:                 getEnv("REDIS_PASSWORD", ""),
 		OTLPEndpoint:              getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
 		RateLimitRPM:              120,
-		ReadTimeout:               10 * time.Second,
-		WriteTimeout:              10 * time.Second,
+		ReadTimeout:               15 * time.Second,
+		WriteTimeout:              45 * time.Second,
 	}
 }
 

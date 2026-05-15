@@ -108,7 +108,7 @@ func buildProviders(cfg *config.Config, logger *zap.Logger) []provider.Provider 
 				ClientSecret: cfg.HalykClientSecret,
 				TerminalID:   cfg.HalykTerminalID,
 				CallbackURL:  cfg.HalykCallbackURL,
-			}),
+			}, logger),
 		}
 	}
 	logger.Info("using local (dev) payment provider — set HALYK_CLIENT_ID to use Halyk ePay")
