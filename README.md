@@ -421,3 +421,35 @@ Results at each layer are cached in Redis (mood top-100 at 1-hour TTL; personal 
 - CI/CD pipeline (GitHub Actions) with per-service test and build jobs
 - Rate limiting per user at the api-gateway layer
 - WebSocket or SSE for real-time "now playing" and notification delivery
+
+
+
+
+![Photo 1](image/photo_1_2026-05-22_11-27-49.jpg)
+![Photo 2](image/photo_2_2026-05-22_11-27-49.jpg)
+![Photo 3](image/photo_3_2026-05-22_11-27-49.jpg)
+![Photo 4](image/photo_4_2026-05-22_11-27-49.jpg)
+![Photo 5](image/photo_5_2026-05-22_11-27-49.jpg)
+![Photo 6](image/photo_6_2026-05-22_11-27-49.jpg)
+![Photo 7](image/photo_7_2026-05-22_11-27-49.jpg)
+![Photo 8](image/photo_8_2026-05-22_11-27-49.jpg)
+![Photo 9](image/photo_9_2026-05-22_11-27-49.jpg)
+![Photo 10](image/photo_10_2026-05-22_11-27-49.jpg)
+![Photo 11](image/photo_11_2026-05-22_11-27-49.jpg)
+![Photo 12](image/photo_12_2026-05-22_11-27-49.jpg)
+![Photo 13](image/photo_13_2026-05-22_11-27-49.jpg)
+![Photo 14](image/photo_14_2026-05-22_11-27-49.jpg)
+![Photo 15](image/photo_15_2026-05-22_11-27-49.jpg)
+![Photo 16](image/photo_16_2026-05-22_11-27-49.jpg)
+![Photo 17](image/photo_17_2026-05-22_11-27-49.jpg)
+![Photo 18](image/photo_18_2026-05-22_11-27-49.jpg)
+![Photo 19](image/photo_19_2026-05-22_11-27-49.jpg)
+![Photo 20](image/photo_20_2026-05-22_11-27-49.jpg)
+![Photo 21](image/photo_21_2026-05-22_11-27-49.jpg)
+![Photo 22](image/photo_22_2026-05-22_11-27-49.jpg)
+![Photo 23](image/photo_23_2026-05-22_11-27-49.jpg)
+![Photo 24](image/photo_24_2026-05-22_11-27-49.jpg)
+![Photo 25](image/photo_25_2026-05-22_11-27-49.jpg)
+![Photo 26](image/photo_26_2026-05-22_11-27-49.jpg)
+![Photo 27](image/photo_27_2026-05-22_11-27-49.jpg)
+![Photo 28](image/photo_28_2026-05-22_11-27-49.jpg)
